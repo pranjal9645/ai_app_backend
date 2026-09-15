@@ -1,9 +1,12 @@
 from fastapi import FastAPI
+from app.core.config import settings
 
-app = FastAPI(title = "AI Knowledge Platform" , version = "1.0.0")
+app = FastAPI(title = settings.app_name , version = settings.app_version)
 
 @app.get("/")
 def root():
-     return {
-        "message": "AI Knowledge Platform API is running"
+    return {
+        "message": f"{settings.app_name} API is running",
+        "environment": settings.environment
     }
+print("Hello")
