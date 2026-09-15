@@ -3,8 +3,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.db.session import get_db
+from app.api.routes.users import router as users_router
+
 
 app = FastAPI(title = settings.app_name , version = settings.app_version)
+
+app.include_router(users_router)
 
 @app.get("/")
 def root():
