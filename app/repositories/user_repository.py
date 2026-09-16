@@ -27,8 +27,16 @@ class UserRepository:
             .filter(User.id == user_id)
             .first()
         )
-    def get_all(self):
-        return self.db.query(User).all()
+
+    def get_all(self , skip : int = 0 , limit : int = 20):
+        return (
+            self.db.query(User)
+                .order_by(User.id)
+                .offset(skip)
+                .limit(limit)
+                .all()
+        )
+
 
     def update(self , user : User):
         self.db.commit()

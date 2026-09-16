@@ -29,8 +29,8 @@ class UserService:
 
         return user
 
-    def get_users(self):
-        return self.user_repository.get_all()
+    def get_users(self , skip : int = 0 , limit : int = 20):
+        return self.user_repository.get_all(skip=skip , limit=limit)
 
     def update_user(self , user_id : int , name : str , email : str):
         user = self.user_repository.get_by_id(user_id)
