@@ -1,4 +1,4 @@
-from fastapi import FastAPI , Depends
+from fastapi import FastAPI , Depends 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -6,13 +6,15 @@ from app.db.session import get_db
 from app.api.routes.users import router as users_router
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
-    UserAlreadyExistsError , UserNotFoundError
+    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError
 )
 
 app = FastAPI(title = settings.app_name , version = settings.app_version)
 
 app.include_router(users_router)
+app.include_router(notes_router)
 
 @app.get("/")
 def root():
@@ -42,3 +44,12 @@ async def user_already_exists_handler(request : Request , exc : UserAlreadyExist
         "detail" : str(exc)
     }
  )
+
+@app.exception_handler(NoteNotFoundError)
+async def note_not_found_handler(request : Request , exc : NoteNotFoundError):
+
+    return JSONResponse(
+        status_code=404 , content={
+            "detail":str(exc)
+        }
+    )
