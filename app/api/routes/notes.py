@@ -26,6 +26,11 @@ def create_note(
         user_id=current_user.id
     )
 
+@router.get("/search" , response_model=list[NoteResponse])
+def search_notes(query : str = Query(... , min_length=1), current_user : User = Depends(get_current_user), skip : int = Query(0 , ge = 0) , limit : int = Query(20 , ge = 1 ,le = 100),db : Session = Depends(get_db)):
+
+    service = NoteService(db)
+    return service.search_notes(user_id=current_user.id , query=query , skip=skip,limit=limit)
 
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(
@@ -81,3 +86,4 @@ def delete_note(
     return {
         "message": "Note deleted successfully"
     }
+

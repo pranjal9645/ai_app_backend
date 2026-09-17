@@ -39,5 +39,20 @@ class NoteRepository:
          self.db.delete(note)
          self.db.commit()
 
+
+    def search_by_user(self , user_id : int , query : str , skip : int = 0 , limit : int = 20):
+         search_pattern = f"%{query}%"
+
+         return(
+              self.db.query(Note)
+                     .filter(Note.user_id == user_id , (
+                          Note.title.ilike(search_pattern) | Note.content.ilike(search_pattern)
+                     ))
+                     .order_by(Note.id)
+                     .offset(skip)
+                     .limit(limit)
+                     .all()
+         )
+
     
         

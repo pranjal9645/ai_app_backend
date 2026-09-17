@@ -55,6 +55,9 @@ class NoteService:
 
       self.note_repository.delete(note)
 
+    def search_notes(self , user_id : int , query : str , skip : int = 0 , limit : int = 20):
+        return self.note_repository.search_by_user(user_id=user_id , query=query,skip=skip,limit=limit)
+
     
 
     
