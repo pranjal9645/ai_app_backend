@@ -15,6 +15,7 @@ router = APIRouter(prefix="/notes" , tags=["Notes"])
 @router.post("/", response_model=NoteResponse)
 def create_note(
     note_data: NoteCreate,
+    current_user : User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     service = NoteService(db)
@@ -22,18 +23,19 @@ def create_note(
     return service.create_note(
         title=note_data.title,
         content=note_data.content,
-        user_id=note_data.user_id
+        user_id=current_user.id
     )
 
 
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(
     note_id: int,
+    current_user : User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     service = NoteService(db)
 
-    return service.get_note(note_id)
+    return service.get_note(note_id , current_user.id)
 
 @router.get("/", response_model=list[NoteResponse])
 def get_notes(
@@ -54,6 +56,7 @@ def get_notes(
 def update_note(
     note_id: int,
     note_data: NoteUpdate,
+    current_user : User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     service = NoteService(db)
@@ -61,17 +64,19 @@ def update_note(
     return service.update_note(
         note_id=note_id,
         title=note_data.title,
-        content=note_data.content
+        content=note_data.content,
+        user_id=current_user.id
     )
 
 @router.delete("/{note_id}")
 def delete_note(
     note_id: int,
+    current_user : User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     service = NoteService(db)
 
-    service.delete_note(note_id)
+    service.delete_note(note_id,current_user.id)
 
     return {
         "message": "Note deleted successfully"
