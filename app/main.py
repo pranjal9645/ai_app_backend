@@ -10,11 +10,13 @@ from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
     UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError
 )
+from app.api.routes.auth import router as auth_router
 
 app = FastAPI(title = settings.app_name , version = settings.app_version)
 
 app.include_router(users_router)
 app.include_router(notes_router)
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

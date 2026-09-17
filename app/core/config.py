@@ -10,7 +10,10 @@ class Settings(BaseSettings):
     app_version : str
     environment: str
     database_url : str
-
+    jwt_secret_key: str
+    jwt_algorithm: str
+    jwt_access_token_expire_minutes: int
+    
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH , env_file_encoding="utf-8" , case_sensitive=False)
 
 
