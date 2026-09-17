@@ -46,7 +46,7 @@ def get_current_user(token : str = Depends(oauth2_scheme) , db : Session = Depen
         if user_id is None:
             raise AuthenticationError("Invalid authentication credentials")
 
-    except jwt.InvalidTokenError :
+    except (jwt.InvalidTokenError , ValueError) :
         raise AuthenticationError("Invalid authentication credentials")
 
     user_repository = UserRepository(db)

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.core.exceptions import UserNotFoundError
+from app.core.exceptions import AuthenticationError
 from app.core.security import (
     create_access_token,
     verify_password
@@ -16,10 +16,10 @@ class AuthService:
         user = self.user_repository.get_by_email(email)
 
         if not user:
-            raise UserNotFoundError("Invalid email or password")
+            raise AuthenticationError("Invalid email or password")
 
         if not verify_password(password , user.password_hash):
-            raise UserNotFoundError("Invalid email or password")
+            raise AuthenticationError("Invalid email or password")
 
         access_token = create_access_token(user_id = user.id)
 
