@@ -11,7 +11,7 @@ router = APIRouter(prefix="/users" , tags=["Users"])
 def create_user(user_data : UserCreate , db : Session = Depends(get_db)):
     service = UserService(db)
 
-    return service.create_user(name=user_data.name , email=user_data.email)
+    return service.create_user(name=user_data.name , email=user_data.email , password=user_data.password)
 
 @router.get("/{user_id}" , response_model=UserResponse)
 def get_user(user_id : int , db : Session = Depends(get_db)):
