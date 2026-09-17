@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.note import Note
+from sqlalchemy import func
 
 class NoteRepository:
 
@@ -40,19 +41,23 @@ class NoteRepository:
          self.db.commit()
 
 
-    def search_by_user(self , user_id : int , query : str , skip : int = 0 , limit : int = 20):
-         search_pattern = f"%{query}%"
+    def search_by_user(self , user_id : int , query : int , skip : int = 0 , limit : int = 20):
+       search_vector = func.to_tsvector("english" , Note.title + " " + Note.content)
+       search_query = func.plainto_tsquery("english" , query)
 
-         return(
-              self.db.query(Note)
-                     .filter(Note.user_id == user_id , (
-                          Note.title.ilike(search_pattern) | Note.content.ilike(search_pattern)
-                     ))
-                     .order_by(Note.id)
-                     .offset(skip)
-                     .limit(limit)
-                     .all()
-         )
-
+       return (
+          self.db.query(Note)
+                 .filter(
+                      Note.user_id == user_id ,
+                      search_vector.op("@@")(search_query)
+                 )
+                 .order_by(func.ts_rank(
+                      search_vector,
+                      search_query
+                 ).desc() , Note.id)
+                 .offset(skip)
+                 .limit(limit)
+                 .all()
+     )
     
         
