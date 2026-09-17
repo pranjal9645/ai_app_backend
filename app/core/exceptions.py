@@ -6,3 +6,6 @@ class UserNotFoundError(Exception):
 
 class NoteNotFoundError(Exception):
     pass
+
+class AuthenticationError(Exception):
+    pass

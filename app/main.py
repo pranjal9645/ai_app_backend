@@ -8,7 +8,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
-    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError
+    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError
 )
 from app.api.routes.auth import router as auth_router
 
@@ -53,5 +53,13 @@ async def note_not_found_handler(request : Request , exc : NoteNotFoundError):
     return JSONResponse(
         status_code=404 , content={
             "detail":str(exc)
+        }
+    )
+
+@app.exception_handler(AuthenticationError)
+async def authentication_exception_handler(request : Request , exc  : AuthenticationError):
+    return JSONResponse(
+        status_code=401 , content={
+            "detail" : str(exc)
         }
     )
