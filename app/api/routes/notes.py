@@ -5,6 +5,7 @@ from app.schemas.note import (
     NoteCreate,
     NoteResponse,
     NoteUpdate,
+    NoteListResponse
 )
 from app.models.user import User
 from app.services.note_service import NoteService
@@ -26,7 +27,7 @@ def create_note(
         user_id=current_user.id
     )
 
-@router.get("/search" , response_model=list[NoteResponse])
+@router.get("/search" , response_model=NoteListResponse)
 def search_notes(query : str = Query(... , min_length=1), current_user : User = Depends(get_current_user), skip : int = Query(0 , ge = 0) , limit : int = Query(20 , ge = 1 ,le = 100),db : Session = Depends(get_db)):
 
     service = NoteService(db)
@@ -42,7 +43,7 @@ def get_note(
 
     return service.get_note(note_id , current_user.id)
 
-@router.get("/", response_model=list[NoteResponse])
+@router.get("/", response_model=NoteListResponse)
 def get_notes(
     current_user : User = Depends(get_current_user),
     skip: int = Query(0, ge=0),

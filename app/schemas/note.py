@@ -22,3 +22,10 @@ class NoteResponse(BaseModel):
     model_config = {
          "from_attributes": True
     }
+
+class NoteListResponse(BaseModel):
+    items : list[NoteResponse]
+    total : int
+    skip : int
+    limit : int
+    has_more : bool

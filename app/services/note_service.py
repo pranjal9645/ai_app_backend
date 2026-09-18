@@ -25,9 +25,19 @@ class NoteService:
         return note
 
     def get_notes(self , user_id : int , skip : int = 0 , limit : int = 20):
-        return (
-            self.note_repository.get_all_by_user(user_id=user_id , skip=skip,limit=limit)
-        )
+        
+          notes =   self.note_repository.get_all_by_user(user_id=user_id , skip=skip,limit=limit)
+
+          total =  self.note_repository.count_by_user(user_id=user_id)
+
+          return {
+               "items": notes,
+               "total": total,
+               "skip": skip,
+               "limit": limit,
+               "has_more": (skip + len(notes)) < total
+          }
+        
 
     def update_note(self , note_id : int , title : str , content : str , user_id : int):
 
@@ -56,7 +66,16 @@ class NoteService:
       self.note_repository.delete(note)
 
     def search_notes(self , user_id : int , query : str , skip : int = 0 , limit : int = 20):
-        return self.note_repository.search_by_user(user_id=user_id , query=query,skip=skip,limit=limit)
+        notes =  self.note_repository.search_by_user(user_id=user_id , query=query,skip=skip,limit=limit)
+        total = self.note_repository.count_search_by_user(user_id=user_id , query=query)
+
+        return {
+        "items": notes,
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "has_more": (skip + len(notes)) < total
+    }
 
     
 

@@ -60,4 +60,24 @@ class NoteRepository:
                  .all()
      )
     
+    def count_by_user(self , user_id : int):
+         return (
+              self.db.query(Note)
+                     .filter(Note.user_id == user_id)
+                     .count()
+         )
+
+    def count_search_by_user(self , user_id : int , query : str):
+         search_vector = func.to_tsvector("english" , Note.title + " " + Note.content)
+
+         search_query = func.plainto_tsquery("english" , query)
+         
+         return (
+        self.db.query(Note)
+        .filter(
+            Note.user_id == user_id,
+            search_vector.op("@@")(search_query)
+        )
+        .count()
+    )
         
