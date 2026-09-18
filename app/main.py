@@ -37,13 +37,20 @@ def database_health(db : Session = Depends(get_db)):
 async def user_not_found_handler(request : Request , exc : UserNotFoundError):
     return JSONResponse(status_code=404 
                         , content= {
-                            "detail" : str(exc)
+                            "error" : {
+                                        "code" : exc.code,
+                                        "message" : str(exc)
+                          }
                         }
                     )
+
 @app.exception_handler(UserAlreadyExistsError)
 async def user_already_exists_handler(request : Request , exc : UserAlreadyExistsError):
     return JSONResponse(status_code=409 , content={
-        "detail" : str(exc)
+         "error" : {
+             "code" : exc.code,
+             "message" : str(exc)
+         }
     }
  )
 
@@ -52,7 +59,10 @@ async def note_not_found_handler(request : Request , exc : NoteNotFoundError):
 
     return JSONResponse(
         status_code=404 , content={
-            "detail":str(exc)
+            "error" : {
+                "code" : exc.code,
+                "message" : str(exc)
+            }
         }
     )
 
@@ -60,6 +70,9 @@ async def note_not_found_handler(request : Request , exc : NoteNotFoundError):
 async def authentication_exception_handler(request : Request , exc  : AuthenticationError):
     return JSONResponse(
         status_code=401 , content={
-            "detail" : str(exc)
+            "error" : {
+                        "code" : exc.code,
+                        "message" : str(exc)
+                    }
         }
     )

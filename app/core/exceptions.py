@@ -1,11 +1,11 @@
 class UserAlreadyExistsError(Exception):
-    pass
+     code = "USER_ALREADY_EXISTS"
 
 class UserNotFoundError(Exception):
-    pass
+    code = "USER_NOT_FOUND"
 
 class NoteNotFoundError(Exception):
-    pass
+     code = "NOTE_NOT_FOUND"
 
 class AuthenticationError(Exception):
-    pass
+     code = "AUTHENTICATION_FAILED"
