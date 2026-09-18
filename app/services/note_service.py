@@ -2,16 +2,28 @@ from sqlalchemy.orm import Session
 from app.models.note import Note
 from app.repositories.note_repository import NoteRepository
 from app.core.exceptions import NoteNotFoundError
+from app.services.redis_service import RedisService
+from app.schemas.note import NoteListResponse
+
 
 class NoteService:
 
     def __init__(self , db : Session):
         self.note_repository = NoteRepository(db)
+        self.redis_service = RedisService()
+
+
+    def invalidate_notes_cache(self , user_id : int):
+        version_key = f"notes:user:{user_id}:version"
+        self.redis_service.increment(version_key)
 
     def create_note(self , title : str , content : str , user_id : int):
         note = Note(title = title , content = content , user_id = user_id)
+        note = self.note_repository.create(note)
+        self.invalidate_notes_cache(user_id=user_id)
 
-        return self.note_repository.create(note)
+        return note
+
 
     def get_note(self , note_id : int , user_id : int):
         note = self.note_repository.get_by_id(note_id)
@@ -26,17 +38,37 @@ class NoteService:
 
     def get_notes(self , user_id : int , skip : int = 0 , limit : int = 20):
         
-          notes =   self.note_repository.get_all_by_user(user_id=user_id , skip=skip,limit=limit)
+          version_key = f"notes:user:{user_id}:version"
 
-          total =  self.note_repository.count_by_user(user_id=user_id)
+          version = self.redis_service.get_int(version_key)
 
-          return {
-               "items": notes,
-               "total": total,
-               "skip": skip,
-               "limit": limit,
-               "has_more": (skip + len(notes)) < total
-          }
+          if version is None:
+              version = self.redis_service.increment(version_key)
+
+          cache_key = f"notes:user:{user_id}:v:{version}:list:{skip}:{limit}"
+
+          cached_notes = self.redis_service.get(cache_key)
+
+          if cached_notes is not None:
+              return cached_notes
+
+          notes = self.note_repository.get_all_by_user(user_id=user_id,skip=skip,limit=limit)
+
+          total = self.note_repository.count_by_user(user_id=user_id)
+
+          result = NoteListResponse(
+             items=notes,
+             total=total,
+             skip=skip,
+             limit=limit,
+             has_more=(skip + len(notes)) < total
+         ).model_dump(mode="json")
+
+          self.redis_service.set(cache_key , result , ex=60)
+
+          return result
+
+         
         
 
     def update_note(self , note_id : int , title : str , content : str , user_id : int):
@@ -51,7 +83,10 @@ class NoteService:
         note.title = title
         note.content = content
 
-        return self.note_repository.update(note)
+        note = self.note_repository.update(note)
+        self.invalidate_notes_cache(user_id=user_id)
+
+        return note
 
     def delete_note(self, note_id: int , user_id : int):
 
@@ -64,6 +99,9 @@ class NoteService:
            raise NoteNotFoundError("Note not found")
 
       self.note_repository.delete(note)
+
+      self.invalidate_notes_cache(user_id=user_id)
+      
 
     def search_notes(self , user_id : int , query : str , skip : int = 0 , limit : int = 20):
         notes =  self.note_repository.search_by_user(user_id=user_id , query=query,skip=skip,limit=limit)

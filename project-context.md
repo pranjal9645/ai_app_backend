@@ -1,147 +1,153 @@
 # AI Knowledge Platform — Project Context
 
-## 1. Project Overview
+## 1. Project Identity
 
-The AI Knowledge Platform is a long-running portfolio project designed to demonstrate production-oriented backend, database, AI, and iOS development skills.
+**Project:** AI Knowledge Platform
 
-The core idea is a personal knowledge platform where users can store notes and documents, search their knowledge, and eventually interact with an AI assistant that answers questions using their own stored knowledge.
+**Goal:** Build a production-oriented, AI-powered personal knowledge platform that allows users to store, search, and interact with their own knowledge.
 
-The project will gradually evolve from a traditional CRUD application into an AI-powered knowledge system using semantic search and Retrieval-Augmented Generation (RAG).
+The project is being developed as a serious portfolio project for internship/full-time opportunities, with an iOS client and a backend capable of evolving into a complete AI/RAG system.
 
 ---
 
-## 2. Main Goal
+## 2. Product Vision
 
-Build a serious portfolio project that demonstrates:
+The platform will allow users to:
 
-* Backend API development
-* Authentication and authorization
-* PostgreSQL database design
-* SQLAlchemy
-* Database migrations
-* Redis
-* Semantic search
-* pgvector
-* Embeddings
-* LLM integration
-* RAG
-* iOS client integration
-* Testing
-* Docker
-* Deployment
-* Production-oriented architecture
+* Register and authenticate securely
+* Create, view, update, and delete notes
+* Search their own notes
+* Use traditional PostgreSQL full-text search
+* Later use semantic/vector search
+* Later ask an AI assistant questions grounded in their own knowledge
+* Access the platform through an iOS/UIKit client
 
-The technologies should be introduced because the product requires them, not simply to make the technology stack larger.
+Long-term AI pipeline:
+
+```text
+User Knowledge
+      ↓
+Notes / Documents
+      ↓
+Chunking
+      ↓
+Embeddings
+      ↓
+pgvector
+      ↓
+Semantic Search
+      ↓
+RAG
+      ↓
+LLM
+      ↓
+AI Knowledge Assistant
+```
 
 ---
 
 ## 3. Technology Stack
-
-### Client
-
-* iOS
-* Swift
-* UIKit initially
 
 ### Backend
 
 * Python
 * FastAPI
 * Pydantic
+* Pydantic Settings
 * SQLAlchemy
-
-### Database
-
 * PostgreSQL
 * Alembic
-* pgvector
-
-### Infrastructure / Supporting Technologies
-
 * Redis
+* pgvector
+* Embedding model
+* LLM API
+* REST APIs
+
+### Client
+
+* Swift
+* UIKit
+* MVVM
+* REST API integration
+
+### Infrastructure / Engineering
+
 * Git
 * GitHub
 * Docker
-* Deployment platform to be selected later
+* Testing
+* Logging
+* Security
+* Deployment
 
-### AI
-
-* Embedding model
-* LLM API
-* Semantic search
-* Retrieval-Augmented Generation (RAG)
+Docker and deployment will be introduced later when the application architecture is mature enough.
 
 ---
 
-## 4. High-Level Architecture
+## 4. Architecture
 
-The eventual architecture is expected to look approximately like:
+Current backend architecture:
 
-iOS App
-↓
-HTTPS
-↓
+```text
 FastAPI
-↓
-┌───────────────────────────────┐
-│ Application / Service Layer   │
-└───────────────────────────────┘
-↓          ↓          ↓
-PostgreSQL     Redis     AI Layer
-↓                    ↓
-pgvector            Embeddings
-↓
-Semantic Search
-↓
-RAG
-↓
-LLM
+   ↓
+API Routes
+   ↓
+Services
+   ↓
+Repositories
+   ↓
+PostgreSQL
+```
 
-This architecture will be built progressively rather than all at once.
+Redis is coordinated at the service layer:
 
----
+```text
+FastAPI
+   ↓
+API Routes
+   ↓
+NoteService
+   ├──────────────→ RedisService
+   │                    ↓
+   │                  Redis
+   │
+   └──────────────→ NoteRepository
+                        ↓
+                    PostgreSQL
+```
 
-## 5. Development Philosophy
+Future AI architecture:
 
-The project is being developed incrementally.
-
-Each major version should leave the application in a usable state.
-
-General progression:
-
-MVP
-↓
-Authentication
-↓
-Secure user-owned data
-↓
-Traditional search
-↓
-Database optimization
-↓
-Redis
-↓
+```text
+iOS App
+   ↓
+HTTPS
+   ↓
+FastAPI
+   ↓
+Application / Service Layer
+   ↓
+PostgreSQL + Redis
+   ↓
+Embedding / AI Layer
+   ↓
 pgvector
-↓
-Embeddings
-↓
-Semantic search
-↓
+   ↓
+Semantic Search
+   ↓
 RAG
-↓
-AI assistant
-↓
-Production hardening
-↓
-iOS integration / refinement
-↓
-Deployment
+   ↓
+LLM
+```
 
-Do not prematurely implement future features before their prerequisites are understood.
+### Architecture principle
+
+Technologies are introduced because the product requires them, not merely to make the stack look impressive.
 
 ---
 
-# 6. Current Backend Structure
+## 5. Repository Structure
 
 Current structure:
 
@@ -149,212 +155,276 @@ Current structure:
 ai-knowledge-platform/
 ├── app/
 │   ├── main.py
-│   │
 │   ├── api/
 │   │   └── routes/
-│   │       ├── users.py
-│   │       ├── auth.py
-│   │       └── notes.py
-│   │
 │   ├── core/
-│   │   ├── config.py
-│   │   ├── security.py
-│   │   └── exceptions.py
-│   │
 │   ├── models/
-│   │   ├── user.py
-│   │   └── note.py
-│   │
 │   ├── schemas/
-│   │   ├── user.py
-│   │   └── note.py
-│   │
 │   ├── services/
-│   │   ├── user_service.py
-│   │   ├── auth_service.py
-│   │   └── note_service.py
-│   │
 │   ├── repositories/
-│   │   ├── user_repository.py
-│   │   └── note_repository.py
-│   │
 │   └── db/
-│       ├── base.py
-│       └── session.py
-│
-├── alembic/
 ├── tests/
+├── alembic/
 ├── .env
-├── .env.example
 ├── .gitignore
 ├── requirements.txt
 ├── README.md
-└── project-context.md
+└── .git/
 ```
 
-The application follows:
+Important files currently include:
 
 ```text
-API Route
-    ↓
-Service
-    ↓
-Repository
-    ↓
-Database
+app/
+├── api/routes/
+│   ├── auth.py
+│   ├── users.py
+│   └── notes.py
+│
+├── core/
+│   ├── config.py
+│   └── security.py
+│
+├── models/
+│   ├── user.py
+│   └── note.py
+│
+├── schemas/
+│   ├── user.py
+│   ├── note.py
+│   └── error.py
+│
+├── services/
+│   ├── auth_service.py
+│   ├── user_service.py
+│   ├── note_service.py
+│   └── redis_service.py
+│
+├── repositories/
+│   ├── user_repository.py
+│   └── note_repository.py
+│
+└── db/
+    ├── base.py
+    ├── session.py
+    └── redis.py
 ```
 
-Routes should primarily handle HTTP concerns.
+---
 
-Services contain application/business logic.
+# 6. Configuration
 
-Repositories handle database access.
+Configuration is handled through `pydantic-settings`.
+
+Environment variables currently include:
+
+```text
+APP_NAME
+APP_VERSION
+ENVIRONMENT
+
+DATABASE_URL
+
+JWT_SECRET_KEY
+JWT_ALGORITHM
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+
+REDIS_URL
+```
+
+`.env` is ignored by Git.
+
+`.env.example` documents required configuration without exposing secrets.
 
 ---
 
 # 7. Database
 
-Current database:
+Database:
 
 ```text
 PostgreSQL
-    └── ai_knowledge_db
+Database: ai_knowledge_db
 ```
 
-Current tables:
+SQLAlchemy is used as the ORM.
 
-```text
-users
-  │
-  │ 1
-  │
-  │ many
-  ▼
-notes
-```
+Alembic is the migration system.
 
-## Users
-
-Current important fields:
-
-* id
-* name
-* email
-* password_hash
-
-`email` is unique and non-null.
-
-Passwords are never stored directly.
-
-Passwords are hashed using Argon2 through `pwdlib`.
+`Base.metadata.create_all()` is no longer used by the application. Schema changes are managed through Alembic migrations.
 
 ---
 
-## Notes
+# 8. Current Database Models
 
-Current important fields:
+## User
 
-* id
-* title
-* content
-* user_id
-* created_at
-* updated_at
-
-`user_id` references `users.id`.
-
-The foreign key uses:
+Conceptually:
 
 ```text
-ON DELETE CASCADE
+User
+├── id
+├── name
+├── email
+└── password_hash
 ```
 
-A database index exists on `notes.user_id` because notes are frequently queried by owner.
+Important constraints:
+
+* `id` is the primary key
+* `email` is unique
+* `email` is required
+* `name` is required
+* `password_hash` is required
 
 ---
 
-# 8. Database Migrations
+## Note
 
-Alembic is used for schema changes.
-
-The project should not rely on:
-
-```python
-Base.metadata.create_all()
-```
-
-for normal application schema management.
-
-Schema changes should be made through:
+Conceptually:
 
 ```text
-Model change
-    ↓
-alembic revision --autogenerate
-    ↓
-Review migration
-    ↓
+Note
+├── id
+├── title
+├── content
+├── user_id
+├── created_at
+└── updated_at
+```
+
+Relationship:
+
+```text
+User
+  │
+  └── 1 → many
+          Notes
+```
+
+`user_id` has:
+
+```text
+ForeignKey("users.id", ondelete="CASCADE")
+```
+
+and is indexed because note queries frequently filter by user.
+
+---
+
+# 9. Database Migrations
+
+Alembic is fully integrated.
+
+Migration history has covered:
+
+* Initial users table
+* User constraints
+* Notes table
+* Password hashing field
+* Cascade deletion
+* Search-related database evolution where required
+* Note `user_id` index
+* Other schema changes through Alembic
+
+Current rule:
+
+```text
+Schema change
+      ↓
+Alembic migration
+      ↓
 alembic upgrade head
 ```
 
+Do not manually modify production schema outside the migration process.
+
 ---
 
-# 9. Authentication
+# 10. Authentication
 
-Authentication currently uses:
+Authentication uses:
 
-* Password hashing with Argon2
-* JWT access tokens
-* OAuth2 bearer token extraction through FastAPI
+* Argon2 password hashing through `pwdlib`
+* JWT access tokens through `PyJWT`
+* FastAPI `OAuth2PasswordBearer`
 
-Login flow:
+Registration:
+
+```text
+POST /users/
+```
+
+Login:
+
+```text
+POST /auth/login
+```
+
+Current login flow:
 
 ```text
 Email + Password
-       ↓
-AuthService
-       ↓
-Verify password
-       ↓
+      ↓
+Find User
+      ↓
+Verify Argon2 Password
+      ↓
 Create JWT
-       ↓
-Return access token
+      ↓
+Return Access Token
 ```
 
-Protected request:
-
-```text
-Authorization: Bearer <token>
-                ↓
-        get_current_user()
-                ↓
-          Decode JWT
-                ↓
-         Find User in DB
-                ↓
-        Current User object
-```
-
-JWT currently contains:
-
-* `sub` → user ID
-* `exp` → expiration time
-
-Authentication failures use generic messages such as:
-
-```text
-Invalid email or password
-```
-
-to avoid unnecessarily revealing whether an account exists.
+JWT contains the user ID as `sub` and an expiration time.
 
 ---
 
-# 10. Authorization
+# 11. Current User
+
+Protected routes use:
+
+```text
+get_current_user()
+```
+
+Flow:
+
+```text
+Authorization: Bearer <token>
+          ↓
+      Decode JWT
+          ↓
+      Validate `sub`
+          ↓
+      Load User
+          ↓
+    Current User
+```
+
+Current endpoint:
+
+```text
+GET /users/me
+```
+
+Important security behavior:
+
+* Missing token → 401
+* Invalid token → 401
+* Expired token → 401
+* Malformed `sub` → 401
+* Deleted user → authentication failure
+* Valid token → current user returned
+
+The iOS client will use this flow after login.
+
+---
+
+# 12. Authorization / Note Ownership
 
 Users can only access their own notes.
 
-The client does not provide the owner ID for note creation or protected note operations.
+The client does **not** provide the owner ID for note operations.
 
 Instead:
 
@@ -365,51 +435,18 @@ Current User
  ↓
 current_user.id
  ↓
-Note ownership
+Note operation
 ```
 
-For operations on a specific note:
+A user attempting to access another user's note receives a not-found response rather than being given information about the other user's resource.
 
-```text
-Request note ID
-      ↓
-Does note exist?
-      ↓
-Does note belong to current user?
-      ↓
-Allow operation
-```
-
-A note belonging to another user is treated as not accessible.
+Ownership checks are implemented in the service layer.
 
 ---
 
-# 11. Current API Features
+# 13. Current Notes API
 
-## Users
-
-Implemented:
-
-```text
-POST   /users/
-GET    /users/
-GET    /users/{user_id}
-PUT    /users/{user_id}
-DELETE /users/{user_id}
-GET    /users/me
-```
-
-## Authentication
-
-Implemented:
-
-```text
-POST /auth/login
-```
-
-## Notes
-
-Implemented:
+Current note functionality includes:
 
 ```text
 POST   /notes/
@@ -424,139 +461,714 @@ All note operations are authenticated.
 
 ---
 
-# 12. Search
+# 14. Pagination
 
-The project currently supports two conceptual levels of search.
-
-## Current search
-
-PostgreSQL Full-Text Search is used for note searching.
-
-The current implementation uses:
+Pagination uses:
 
 ```text
+skip
+limit
+```
+
+Current constraints:
+
+```text
+skip >= 0
+1 <= limit <= 100
+```
+
+Note list responses include:
+
+```json
+{
+    "items": [],
+    "total": 0,
+    "skip": 0,
+    "limit": 20,
+    "has_more": false
+}
+```
+
+This structure is intended to make client-side pagination straightforward for the iOS application.
+
+---
+
+# 15. Search
+
+## PostgreSQL Full-Text Search
+
+Current note search uses PostgreSQL full-text search.
+
+Conceptually:
+
+```text
+Note title + content
+        ↓
 to_tsvector()
-        +
+        ↓
 plainto_tsquery()
-        +
+        ↓
 @@
-        +
+        ↓
 ts_rank()
+        ↓
+Ordered results
 ```
 
 Search is restricted to the authenticated user's notes.
 
-Search results are ranked using PostgreSQL text-search ranking.
+Current search is traditional lexical/full-text search.
+
+It is intentionally separate from the future semantic search system.
 
 ---
 
-## Future semantic search
+# 16. Database Indexing
 
-Semantic search is not implemented yet.
-
-Planned flow:
+Current important index:
 
 ```text
-User query
-    ↓
-Embedding model
-    ↓
-Query vector
-    ↓
-pgvector
-    ↓
-Similarity search
-    ↓
-Relevant note chunks
+notes.user_id
 ```
 
-This will be implemented after pgvector and embeddings are properly learned.
+Reason:
 
----
-
-# 13. Pagination
-
-Note list and search responses currently return metadata:
+Most note queries contain:
 
 ```text
-items
-total
-skip
-limit
-has_more
+WHERE user_id = ...
 ```
 
-This is intended to support efficient client-side pagination, particularly for the future iOS application.
+The primary key already has database indexing.
 
-Current pagination uses offset/limit.
+The unique user email constraint also provides the necessary uniqueness support.
 
-The project will not introduce a generic pagination abstraction prematurely.
+Future indexes will be added only when justified by actual query patterns.
+
+Potential future examples:
+
+```text
+(user_id, created_at)
+```
+
+FTS:
+
+```text
+GIN index on tsvector
+```
+
+Vector search:
+
+```text
+pgvector HNSW / IVFFlat
+```
+
+These are not added prematurely.
 
 ---
 
-# 14. Current Learning Progress
+# 17. API Error Design
 
-Completed:
+API errors use a consistent structure:
+
+```json
+{
+    "error": {
+        "code": "NOTE_NOT_FOUND",
+        "message": "Note not found"
+    }
+}
+```
+
+Stable machine-readable error codes include:
 
 ```text
-Python
-↓
-FastAPI
-↓
-Pydantic
-↓
-REST APIs
-↓
+USER_ALREADY_EXISTS
+USER_NOT_FOUND
+NOTE_NOT_FOUND
+AUTHENTICATION_FAILED
+```
+
+Important principle:
+
+```text
+iOS should rely on `code`,
+not exact English `message`.
+```
+
+Internal database/provider details should not be exposed to clients.
+
+---
+
+# 18. API Input Validation
+
+Pydantic validates API boundaries.
+
+Current examples:
+
+### User
+
+```text
+name:
+    min 2
+    max 100
+
+email:
+    valid email format
+
+password:
+    min 8
+    max 128
+```
+
+Names are stripped and blank names are rejected.
+
+Passwords are **not** stripped because changing a password silently is undesirable.
+
+### Notes
+
+```text
+title:
+    min 1
+    max 255
+
+content:
+    min 1
+```
+
+Blank title/content values are rejected.
+
+Pagination is constrained using FastAPI query validation.
+
+Important distinction:
+
+```text
+Pydantic validation
+        =
+Is this input structurally valid?
+
+Service logic
+        =
+Is this operation allowed?
+```
+
+---
+
+# 19. Redis
+
+Redis has now been **implemented and feature-tested**.
+
+Redis is used as a performance/temporary data layer.
+
+PostgreSQL remains the source of truth.
+
+Redis configuration:
+
+```text
+REDIS_URL=redis://localhost:6379/0
+```
+
+Local connectivity has been verified.
+
+---
+
+## Redis Infrastructure
+
+Redis connection:
+
+```text
+app/db/redis.py
+```
+
+Application-level Redis operations are centralized in:
+
+```text
+app/services/redis_service.py
+```
+
+`RedisService` currently supports:
+
+```text
+GET
+SET
+DELETE
+EXISTS
+GET_INT
+INCREMENT
+TTL
+```
+
+JSON serialization/deserialization is handled inside `RedisService`.
+
+Application services do not directly perform Redis JSON serialization.
+
+---
+
+# 20. Redis Notes Cache
+
+Currently only:
+
+```text
+GET /notes/
+```
+
+is cached.
+
+The initial caching strategy is:
+
+```text
+Cache-aside
++
+Version-based invalidation
++
+TTL
+```
+
+---
+
+## Cache Version
+
+Version key:
+
+```text
+notes:user:{user_id}:version
+```
+
+Example:
+
+```text
+notes:user:7:version
+```
+
+---
+
+## List Cache Key
+
+Cache key:
+
+```text
+notes:user:{user_id}:v:{version}:list:{skip}:{limit}
+```
+
+Example:
+
+```text
+notes:user:7:v:3:list:0:20
+```
+
+This provides:
+
+* user isolation
+* pagination isolation
+* version-based invalidation
+* simple debugging
+
+---
+
+## Cache Read Flow
+
+```text
+GET /notes/
+      ↓
+Get user's cache version
+      ↓
+Build versioned key
+      ↓
+Redis GET
+   ↙       ↘
+ HIT       MISS
+  ↓          ↓
+Return    PostgreSQL
+             ↓
+       NoteListResponse
+             ↓
+      model_dump(mode="json")
+             ↓
+        Redis SET
+         TTL 60 sec
+             ↓
+          Return
+```
+
+Cached data is JSON-compatible.
+
+SQLAlchemy model objects are never stored directly in Redis.
+
+---
+
+# 21. Redis TTL
+
+Current notes-list cache TTL:
+
+```text
+60 seconds
+```
+
+Versioning makes old cache keys logically obsolete immediately after a mutation.
+
+TTL eventually removes old keys physically.
+
+---
+
+# 22. Redis Cache Invalidation
+
+Cache invalidation is coordinated by `NoteService`.
+
+Current helper:
+
+```text
+invalidate_notes_cache(user_id)
+```
+
+It increments:
+
+```text
+notes:user:{user_id}:version
+```
+
+Invalidation happens after successful PostgreSQL mutations.
+
+### Create
+
+```text
+PostgreSQL INSERT
+      ↓
+version++
+```
+
+### Update
+
+```text
+PostgreSQL UPDATE
+      ↓
+version++
+```
+
+### Delete
+
+```text
+PostgreSQL DELETE
+      ↓
+version++
+```
+
+Database mutation occurs before cache invalidation.
+
+---
+
+# 23. Why Version-Based Invalidation
+
+We do not use Redis `KEYS` to find and delete every pagination key.
+
+For example:
+
+```text
+notes:user:7:v:5:list:0:20
+notes:user:7:v:5:list:20:20
+notes:user:7:v:5:list:40:20
+```
+
+After a mutation:
+
+```text
+version 5 → version 6
+```
+
+New requests use:
+
+```text
+notes:user:7:v:6:...
+```
+
+Old version-5 entries are no longer used and eventually expire through TTL.
+
+---
+
+# 24. Redis Responsibilities
+
+Current architecture:
+
+```text
+NoteRepository
+    ↓
+PostgreSQL only
+
+RedisService
+    ↓
+Redis operations only
+
+NoteService
+    ↓
+Coordinates PostgreSQL + Redis
+```
+
+Redis is intentionally **not** placed inside `NoteRepository`.
+
+The repository remains responsible for persistence.
+
+The service layer decides when caching is useful.
+
+---
+
+# 25. Redis Testing
+
+Redis implementation has been manually feature-tested for:
+
+* Redis connectivity
+* JSON SET/GET
+* Version initialization
+* Version increment
+* Cache MISS
+* Cache HIT
+* TTL
+* Pagination-specific keys
+* User-specific cache keys
+* Create invalidation
+* Update invalidation
+* Delete invalidation
+* TTL expiration
+
+Expected lifecycle:
+
+```text
+First GET
+    ↓
+MISS
+    ↓
 PostgreSQL
-↓
-SQLAlchemy
-↓
-SQLAlchemy + FastAPI
-↓
-Alembic
-↓
-FastAPI architecture
-↓
-CRUD
-↓
-Authentication
-↓
-Authorization
-↓
-Basic note search
-↓
-PostgreSQL Full-Text Search
-↓
-Pagination
-↓
-Database indexing
-```
+    ↓
+Redis cache
 
-Currently:
-
-```text
+Second identical GET
+    ↓
+HIT
+    ↓
 Redis
+
+Create / Update / Delete
+    ↓
+PostgreSQL mutation
+    ↓
+version++
+
+Next GET
+    ↓
+new version
+    ↓
+MISS
+    ↓
+PostgreSQL
+    ↓
+fresh Redis cache
 ```
 
-Redis is being learned in a separate dedicated conversation using a structured lesson roadmap.
-
-After Redis:
+Automated Redis service tests are also being developed in:
 
 ```text
-pgvector
+tests/test_redis_service.py
 ```
-
-will be learned before integrating it into this project.
 
 ---
 
-# 15. Git Strategy
+# 26. Deferred Redis Work
 
-Git and GitHub are part of the project from the beginning.
+Not currently cached:
 
-Major completed milestones should receive meaningful commits.
+```text
+GET /notes/{note_id}
+GET /notes/search
+```
 
-Examples of existing milestone commits include:
+Search caching is intentionally deferred because the search architecture will evolve toward semantic/vector search.
+
+Redis failure-handling hardening is also deferred.
+
+Future production behavior may allow Redis failures to fall back to PostgreSQL rather than breaking note retrieval.
+
+This will be implemented only when production hardening becomes relevant.
+
+---
+
+# 27. AI / pgvector Status
+
+Current status:
+
+```text
+PostgreSQL
+    ✓
+
+FastAPI
+    ✓
+
+SQLAlchemy
+    ✓
+
+Alembic
+    ✓
+
+Authentication
+    ✓
+
+Authorization
+    ✓
+
+Note CRUD
+    ✓
+
+PostgreSQL FTS
+    ✓
+
+Pagination
+    ✓
+
+Database indexing
+    ✓
+
+API error design
+    ✓
+
+Input validation
+    ✓
+
+Redis
+    ✓
+
+pgvector
+    → Next major area
+
+Embeddings
+    → Later
+
+Semantic Search
+    → Later
+
+RAG
+    → Later
+
+LLM Assistant
+    → Later
+```
+
+---
+
+# 28. Current Development Direction
+
+The current roadmap is:
+
+```text
+Backend Foundation
+       ↓
+Authentication
+       ↓
+Notes
+       ↓
+Search
+       ↓
+Pagination
+       ↓
+Indexing
+       ↓
+API validation/error design
+       ↓
+Redis
+       ↓
+pgvector
+       ↓
+Embeddings
+       ↓
+Semantic Search
+       ↓
+RAG
+       ↓
+LLM Assistant
+       ↓
+iOS Integration / AI Features
+       ↓
+Testing
+       ↓
+Docker
+       ↓
+Production Hardening
+       ↓
+Deployment
+```
+
+The next major technical area is **pgvector**.
+
+---
+
+# 29. Specialized Chat Strategy
+
+Because this project will span many months, large independent technical areas use dedicated chats.
+
+```text
+AI KNOWLEDGE PLATFORM
+│
+├── MAIN PROJECT CHAT
+│   ├── Architecture
+│   ├── Roadmap
+│   ├── Feature decisions
+│   ├── Database/schema
+│   ├── Integration
+│   ├── project-context.md
+│   └── Git milestones
+│
+├── REDIS CHAT
+│   ├── Redis-specific implementation
+│   ├── Redis testing
+│   └── Redis debugging
+│
+├── PGVECTOR / AI CHAT
+│   ├── pgvector
+│   ├── embeddings
+│   ├── chunking
+│   ├── semantic search
+│   └── RAG
+│
+└── FUTURE SPECIALIZED CHATS
+```
+
+Redis fundamentals have already been learned and should **not** be re-taught unless explicitly requested.
+
+The Redis chat is now an implementation/debugging workspace.
+
+The Main Project Chat remains the architectural owner.
+
+---
+
+# 30. Specialized Chat Workflow
+
+```text
+Main Project Chat
+       ↓
+Identify feature requirement
+       ↓
+Specialized Chat
+       ↓
+Build focused feature
+       ↓
+Test feature
+       ↓
+Return to Main Project Chat
+       ↓
+Integrate / verify
+       ↓
+Update project-context.md
+       ↓
+Git milestone
+```
+
+Do not create a separate chat for every small feature.
+
+Dedicated chats are for large independent technical areas.
+
+---
+
+# 31. Git Strategy
+
+Git/GitHub are used throughout the project.
+
+Important completed milestones include:
 
 ```text
 Initial project setup
@@ -575,115 +1187,170 @@ Add note search
 Improve note search with PostgreSQL full-text search
 Add paginated note responses
 Add note query index
+Standardize API error responses
+Strengthen API input validation
 ```
 
-Future major milestones should also be committed.
-
----
-
-# 16. Important Architectural Decisions
-
-### Decision 1 — Layered architecture
-
-Use:
+Current Redis milestone:
 
 ```text
-Routes → Services → Repositories → Database
+Add Redis notes caching
 ```
 
-Do not bypass layers without a clear reason.
-
-### Decision 2 — JWT authentication
-
-JWT access tokens are currently used for API authentication.
-
-### Decision 3 — User ownership from authentication
-
-Protected resources should derive ownership from the authenticated user rather than trusting a user ID supplied by the client.
-
-### Decision 4 — PostgreSQL as the primary database
-
-PostgreSQL is the primary persistent data store.
-
-### Decision 5 — Alembic for migrations
-
-Database schema evolution is managed through Alembic.
-
-### Decision 6 — Incremental complexity
-
-Redis, pgvector, embeddings, RAG, and LLM functionality will be introduced when the application reaches the stage where those technologies solve an actual problem.
+Meaningful commits should represent stable project milestones rather than every tiny change.
 
 ---
 
-# 17. Current Project Status
+# 32. Development Workflow
 
-The project currently has a functional backend foundation with:
-
-* User registration
-* Secure password hashing
-* JWT authentication
-* Current-user authentication
-* User CRUD
-* Note CRUD
-* Note ownership/authorization
-* PostgreSQL
-* SQLAlchemy
-* Alembic
-* PostgreSQL Full-Text Search
-* Pagination
-* Database indexing
-
-The project is **not yet an AI/RAG system**.
-
-The AI layer is intentionally being built later.
-
----
-
-# 18. Immediate Next Direction
-
-The immediate learning track is:
+For major features:
 
 ```text
-Redis
-   ↓
+Plan
+ ↓
+Implement
+ ↓
+Test
+ ↓
+Integrate
+ ↓
+Verify
+ ↓
+Update project-context.md
+ ↓
+Git commit
+```
+
+Do not move to the next major subsystem while the current integration is unverified.
+
+---
+
+# 33. Project Context Maintenance
+
+`project-context.md` is the durable project-level source of context across conversations.
+
+It should describe **current truth**, not act as a diary.
+
+When architecture changes:
+
+1. Update the relevant section.
+2. Remove obsolete descriptions.
+3. Keep important architectural decisions.
+4. Do not append contradictory historical states.
+
+Do not store:
+
+* Every debugging mistake
+* Every terminal command
+* Temporary test data
+* Abandoned implementations
+* Full source code
+* Detailed lesson transcripts
+
+Git history preserves implementation history.
+
+Source code preserves implementation details.
+
+---
+
+# 34. Source-of-Truth Hierarchy
+
+When information conflicts, use:
+
+```text
+Actual source code
+       +
+Database / migrations
+       +
+Git history
+       +
+project-context.md
+       +
+Current conversations
+```
+
+If `project-context.md` conflicts with the actual implementation, verify the implementation and update the context file.
+
+---
+
+# 35. Current Project State
+
+The project has moved beyond basic backend learning.
+
+The following foundation is now operational:
+
+```text
+FastAPI
+SQLAlchemy
+PostgreSQL
+Alembic
+Pydantic
+JWT authentication
+Argon2 password hashing
+Authorization
+User ownership
+Notes CRUD
+PostgreSQL FTS
+Pagination
+Database indexing
+API error contracts
+Input validation
+Redis caching
+```
+
+The project is now transitioning from the **traditional backend foundation** into the **AI retrieval layer**.
+
+---
+
+# 36. Immediate Next Direction
+
+Next major area:
+
+```text
 pgvector
-   ↓
-Integrate pgvector
-   ↓
-Document/note chunking
-   ↓
-Embedding generation
-   ↓
-Store embeddings
-   ↓
-Semantic search
-   ↓
-RAG
-   ↓
-AI assistant
 ```
 
-The exact implementation details should be updated as architectural decisions are made.
+The goal is to add vector storage/search to PostgreSQL without prematurely implementing the entire AI system.
+
+The next progression will be:
+
+```text
+pgvector
+    ↓
+Understand vector storage/indexing
+    ↓
+Integrate with PostgreSQL
+    ↓
+Design note/chunk embedding storage
+    ↓
+Embeddings
+    ↓
+Semantic Search
+    ↓
+RAG
+```
+
+The AI architecture should continue to be built incrementally.
 
 ---
 
-# 19. Context Management Rules
+# 37. Core Project Principle
 
-This file is the project's durable context.
+Build a real product, not a collection of tutorials.
 
-Whenever a major project decision, structural change, completed milestone, or important constraint is established, update this file.
+Every technology should answer:
 
-Do not record every small coding detail.
+> "What problem in our product requires this?"
 
-The file should answer:
+The project should remain:
 
-1. What are we building?
-2. Why are we building it?
-3. What technologies are being used?
-4. What architecture are we following?
-5. What has already been implemented?
-6. What important decisions have been made?
-7. What is currently being learned/built?
-8. What comes next?
+* Understandable
+* Testable
+* Incrementally built
+* Secure
+* Maintainable
+* Production-oriented
+* Strong enough to demonstrate real engineering ability
+* Capable of evolving into an AI/RAG system
 
-Individual feature implementation details belong in the relevant source code and Git history rather than becoming an unnecessarily large context file.
+
