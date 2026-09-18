@@ -1,14 +1,34 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel , Field , field_validator
 
 class NoteCreate(BaseModel):
-    title : str
-    content : str
+    title : str = Field(min_length=1 , max_length=255)
+    content : str = Field(min_length=1)
 
+    @field_validator("title" , "content")
+    @classmethod
+    def validate_not_blank(cls , value : str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Field Cannot be blank")
+
+        return value
 
 class NoteUpdate(BaseModel):
-    title : str
-    content : str
+    title : str = Field(min_length=1 , max_length=255)
+    content : str = Field(min_length=1)
+
+
+    @field_validator("title" , "content")
+    @classmethod
+    def validate_not_blank(cls , value : str) -> str:
+            value = value.strip()
+    
+            if not value:
+                raise ValueError("Field Cannot be blank")
+    
+            return value
 
 
 class NoteResponse(BaseModel):
