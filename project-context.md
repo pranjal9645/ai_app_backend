@@ -1,30 +1,32 @@
-# AI Knowledge Platform — Project Context
+#AI Knowledge Platform --- Project Context
 
 ## 1. Project Identity
 
 **Project:** AI Knowledge Platform
 
-**Goal:** Build a production-oriented, AI-powered personal knowledge platform that allows users to store, search, and interact with their own knowledge.
+**Goal:** Build a production-oriented AI-powered personal knowledge
+platform that allows users to store, search, and interact with their own
+knowledge.
 
-The project is being developed as a serious portfolio project for internship/full-time opportunities, with an iOS client and a backend capable of evolving into a complete AI/RAG system.
-
----
+The project is being developed as a serious portfolio project for
+internship/full-time opportunities, with an iOS/UIKit client and a
+backend capable of evolving into a complete AI/RAG system.
 
 ## 2. Product Vision
 
-The platform will allow users to:
+The platform allows users to:
 
-* Register and authenticate securely
-* Create, view, update, and delete notes
-* Search their own notes
-* Use traditional PostgreSQL full-text search
-* Later use semantic/vector search
-* Later ask an AI assistant questions grounded in their own knowledge
-* Access the platform through an iOS/UIKit client
+-   Register and authenticate securely
+-   Create, view, update, and delete notes
+-   Search their own notes
+-   Use PostgreSQL full-text search
+-   Use semantic/vector search
+-   Later ask an AI assistant questions grounded in their own knowledge
+-   Access the platform through an iOS/UIKit client
 
 Long-term AI pipeline:
 
-```text
+``` text
 User Knowledge
       ↓
 Notes / Documents
@@ -44,51 +46,46 @@ LLM
 AI Knowledge Assistant
 ```
 
----
-
 ## 3. Technology Stack
 
 ### Backend
 
-* Python
-* FastAPI
-* Pydantic
-* Pydantic Settings
-* SQLAlchemy
-* PostgreSQL
-* Alembic
-* Redis
-* pgvector
-* Embedding model
-* LLM API
-* REST APIs
+-   Python
+-   FastAPI
+-   Pydantic
+-   Pydantic Settings
+-   SQLAlchemy
+-   PostgreSQL
+-   Alembic
+-   Redis
+-   pgvector
+-   Ollama
+-   `nomic-embed-text`
+-   LLM API
+-   REST APIs
 
 ### Client
 
-* Swift
-* UIKit
-* MVVM
-* REST API integration
+-   Swift
+-   UIKit
+-   MVVM
+-   REST API integration
 
 ### Infrastructure / Engineering
 
-* Git
-* GitHub
-* Docker
-* Testing
-* Logging
-* Security
-* Deployment
-
-Docker and deployment will be introduced later when the application architecture is mature enough.
-
----
+-   Git
+-   GitHub
+-   Docker
+-   Testing
+-   Logging
+-   Security
+-   Deployment
 
 ## 4. Architecture
 
 Current backend architecture:
 
-```text
+``` text
 FastAPI
    ↓
 API Routes
@@ -100,58 +97,61 @@ Repositories
 PostgreSQL
 ```
 
+AI retrieval architecture:
+
+``` text
+Note
+ ↓
+ChunkingService
+ ↓
+EmbeddingService
+ ↓
+NoteChunk
+ ↓
+pgvector
+ ↓
+Semantic Retrieval
+```
+
 Redis is coordinated at the service layer:
 
-```text
+``` text
 FastAPI
    ↓
 API Routes
    ↓
 NoteService
-   ├──────────────→ RedisService
-   │                    ↓
-   │                  Redis
+   ├──────────────→ RedisService → Redis
    │
-   └──────────────→ NoteRepository
-                        ↓
-                    PostgreSQL
+   └──────────────→ NoteRepository → PostgreSQL
 ```
 
-Future AI architecture:
+Future RAG architecture:
 
-```text
-iOS App
-   ↓
-HTTPS
-   ↓
-FastAPI
-   ↓
-Application / Service Layer
-   ↓
-PostgreSQL + Redis
-   ↓
-Embedding / AI Layer
-   ↓
-pgvector
-   ↓
+``` text
+User Question
+      ↓
+Query Embedding
+      ↓
 Semantic Search
-   ↓
-RAG
-   ↓
+      ↓
+Relevant NoteChunks
+      ↓
+Context Assembly
+      ↓
 LLM
+      ↓
+Grounded Answer
+      ↓
+Sources / Citations
 ```
 
-### Architecture principle
-
-Technologies are introduced because the product requires them, not merely to make the stack look impressive.
-
----
+**Architecture principle:** Technologies are introduced because the
+product requires them, not merely to make the stack look impressive.
 
 ## 5. Repository Structure
 
-Current structure:
-
-```text
+``` text
 ai-knowledge-platform/
 ├── app/
 │   ├── main.py
@@ -172,77 +172,75 @@ ai-knowledge-platform/
 └── .git/
 ```
 
-Important files currently include:
+Important backend files include:
 
-```text
+``` text
 app/
 ├── api/routes/
 │   ├── auth.py
 │   ├── users.py
 │   └── notes.py
-│
 ├── core/
 │   ├── config.py
 │   └── security.py
-│
 ├── models/
 │   ├── user.py
-│   └── note.py
-│
+│   ├── note.py
+│   └── note_chunk.py
 ├── schemas/
 │   ├── user.py
 │   ├── note.py
 │   └── error.py
-│
 ├── services/
 │   ├── auth_service.py
 │   ├── user_service.py
 │   ├── note_service.py
-│   └── redis_service.py
-│
+│   ├── redis_service.py
+│   ├── chunking_service.py
+│   ├── embedding_service.py
+│   └── embedding_ingestion_service.py
 ├── repositories/
 │   ├── user_repository.py
 │   └── note_repository.py
-│
 └── db/
     ├── base.py
     ├── session.py
     └── redis.py
 ```
 
----
-
-# 6. Configuration
+## 6. Configuration
 
 Configuration is handled through `pydantic-settings`.
 
-Environment variables currently include:
+Current environment configuration includes:
 
-```text
+``` text
 APP_NAME
 APP_VERSION
 ENVIRONMENT
-
 DATABASE_URL
-
 JWT_SECRET_KEY
 JWT_ALGORITHM
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES
-
 REDIS_URL
+OLLAMA_HOST
+EMBEDDING_MODEL
+```
+
+Embedding configuration:
+
+``` env
+OLLAMA_HOST=http://localhost:11434
+EMBEDDING_MODEL=nomic-embed-text
 ```
 
 `.env` is ignored by Git.
 
-`.env.example` documents required configuration without exposing secrets.
-
----
-
-# 7. Database
+## 7. Database
 
 Database:
 
-```text
+``` text
 PostgreSQL
 Database: ai_knowledge_db
 ```
@@ -251,17 +249,14 @@ SQLAlchemy is used as the ORM.
 
 Alembic is the migration system.
 
-`Base.metadata.create_all()` is no longer used by the application. Schema changes are managed through Alembic migrations.
+`Base.metadata.create_all()` is no longer used by the application.
+Schema changes are managed through Alembic migrations.
 
----
+## 8. Current Database Models
 
-# 8. Current Database Models
+### User
 
-## User
-
-Conceptually:
-
-```text
+``` text
 User
 ├── id
 ├── name
@@ -271,19 +266,14 @@ User
 
 Important constraints:
 
-* `id` is the primary key
-* `email` is unique
-* `email` is required
-* `name` is required
-* `password_hash` is required
+-   `id` is the primary key
+-   `email` is unique and required
+-   `name` is required
+-   `password_hash` is required
 
----
+### Note
 
-## Note
-
-Conceptually:
-
-```text
+``` text
 Note
 ├── id
 ├── title
@@ -293,77 +283,84 @@ Note
 └── updated_at
 ```
 
-Relationship:
+`user_id` uses:
 
-```text
-User
-  │
-  └── 1 → many
-          Notes
-```
-
-`user_id` has:
-
-```text
+``` text
 ForeignKey("users.id", ondelete="CASCADE")
 ```
 
-and is indexed because note queries frequently filter by user.
+and is indexed.
 
----
+### NoteChunk
 
-# 9. Database Migrations
+``` text
+NoteChunk
+├── id
+├── note_id
+├── content
+├── chunk_index
+├── embedding
+└── created_at
+```
+
+`note_id` uses:
+
+``` text
+ForeignKey("notes.id", ondelete="CASCADE")
+```
+
+and is indexed.
+
+The embedding column is:
+
+``` text
+vector(768)
+```
+
+because the selected local embedding model is `nomic-embed-text`.
+
+## 9. Database Migrations
 
 Alembic is fully integrated.
 
-Migration history has covered:
+Schema changes are managed through migrations.
 
-* Initial users table
-* User constraints
-* Notes table
-* Password hashing field
-* Cascade deletion
-* Search-related database evolution where required
-* Note `user_id` index
-* Other schema changes through Alembic
+The database includes the `note_chunks` table required for vector
+retrieval.
 
-Current rule:
+Important vector schema requirement:
 
-```text
-Schema change
-      ↓
-Alembic migration
-      ↓
-alembic upgrade head
+``` text
+note_chunks.embedding
+    ↓
+vector(768)
 ```
 
-Do not manually modify production schema outside the migration process.
+This dimension must remain aligned with the configured embedding model.
 
----
-
-# 10. Authentication
+## 10. Authentication
 
 Authentication uses:
 
-* Argon2 password hashing through `pwdlib`
-* JWT access tokens through `PyJWT`
-* FastAPI `OAuth2PasswordBearer`
+-   Argon2 password hashing through `pwdlib`
+-   JWT access tokens through `PyJWT`
+-   FastAPI `OAuth2PasswordBearer`
 
 Registration:
 
-```text
+``` text
 POST /users/
 ```
 
 Login:
 
-```text
+``` text
 POST /auth/login
 ```
 
-Current login flow:
+Flow:
 
-```text
+``` text
 Email + Password
       ↓
 Find User
@@ -375,21 +372,13 @@ Create JWT
 Return Access Token
 ```
 
-JWT contains the user ID as `sub` and an expiration time.
+## 11. Current User
 
----
-
-# 11. Current User
-
-Protected routes use:
-
-```text
-get_current_user()
-```
+Protected routes use `get_current_user()`.
 
 Flow:
 
-```text
+``` text
 Authorization: Bearer <token>
           ↓
       Decode JWT
@@ -403,32 +392,20 @@ Authorization: Bearer <token>
 
 Current endpoint:
 
-```text
+``` text
 GET /users/me
 ```
 
-Important security behavior:
+Authentication failures return HTTP 401 with the standard API error
+structure.
 
-* Missing token → 401
-* Invalid token → 401
-* Expired token → 401
-* Malformed `sub` → 401
-* Deleted user → authentication failure
-* Valid token → current user returned
-
-The iOS client will use this flow after login.
-
----
-
-# 12. Authorization / Note Ownership
+## 12. Authorization / Note Ownership
 
 Users can only access their own notes.
 
-The client does **not** provide the owner ID for note operations.
+The client does not provide the owner ID for note operations.
 
-Instead:
-
-```text
+``` text
 JWT
  ↓
 Current User
@@ -438,17 +415,13 @@ current_user.id
 Note operation
 ```
 
-A user attempting to access another user's note receives a not-found response rather than being given information about the other user's resource.
+Ownership checks remain in the service layer.
 
-Ownership checks are implemented in the service layer.
+Semantic search is also restricted to the current user's notes.
 
----
+## 13. Current Notes API
 
-# 13. Current Notes API
-
-Current note functionality includes:
-
-```text
+``` text
 POST   /notes/
 GET    /notes/
 GET    /notes/{note_id}
@@ -457,29 +430,24 @@ DELETE /notes/{note_id}
 GET    /notes/search
 ```
 
+The notes API also contains semantic-search functionality.
+
 All note operations are authenticated.
 
----
+## 14. Pagination
 
-# 14. Pagination
-
-Pagination uses:
-
-```text
-skip
-limit
-```
+Pagination uses `skip` and `limit`.
 
 Current constraints:
 
-```text
+``` text
 skip >= 0
 1 <= limit <= 100
 ```
 
 Note list responses include:
 
-```json
+``` json
 {
     "items": [],
     "total": 0,
@@ -489,19 +457,11 @@ Note list responses include:
 }
 ```
 
-This structure is intended to make client-side pagination straightforward for the iOS application.
+## 15. Search
 
----
+### PostgreSQL Full-Text Search
 
-# 15. Search
-
-## PostgreSQL Full-Text Search
-
-Current note search uses PostgreSQL full-text search.
-
-Conceptually:
-
-```text
+``` text
 Note title + content
         ↓
 to_tsvector()
@@ -517,61 +477,64 @@ Ordered results
 
 Search is restricted to the authenticated user's notes.
 
-Current search is traditional lexical/full-text search.
+### Semantic Search
 
-It is intentionally separate from the future semantic search system.
+Semantic search is integrated using pgvector.
 
----
+``` text
+User query
+    ↓
+EmbeddingService
+    ↓
+Query embedding
+    ↓
+NoteRepository.semantic_search()
+    ↓
+pgvector cosine distance
+    ↓
+Nearest NoteChunks
+    ↓
+Current user's notes only
+```
 
-# 16. Database Indexing
+Current retrieval exposes information including:
 
-Current important index:
+``` text
+note_id
+chunk_id
+chunk_index
+content
+distance
+```
 
-```text
+This is semantic retrieval only, not complete RAG.
+
+## 16. Database Indexing
+
+Current important indexes include:
+
+``` text
 notes.user_id
+note_chunks.note_id
 ```
 
-Reason:
+Future indexes will be added when justified by actual query patterns.
 
-Most note queries contain:
+Potential future examples include:
 
-```text
-WHERE user_id = ...
-```
-
-The primary key already has database indexing.
-
-The unique user email constraint also provides the necessary uniqueness support.
-
-Future indexes will be added only when justified by actual query patterns.
-
-Potential future examples:
-
-```text
+``` text
 (user_id, created_at)
 ```
 
-FTS:
+a GIN index for optimized PostgreSQL full-text search, and vector
+indexes such as HNSW/IVFFlat when vector data and query requirements
+justify them.
 
-```text
-GIN index on tsvector
-```
+## 17. API Error Design
 
-Vector search:
+API errors use:
 
-```text
-pgvector HNSW / IVFFlat
-```
-
-These are not added prematurely.
-
----
-
-# 17. API Error Design
-
-API errors use a consistent structure:
-
-```json
+``` json
 {
     "error": {
         "code": "NOTE_NOT_FOUND",
@@ -580,115 +543,59 @@ API errors use a consistent structure:
 }
 ```
 
-Stable machine-readable error codes include:
+Stable codes include:
 
-```text
+``` text
 USER_ALREADY_EXISTS
 USER_NOT_FOUND
 NOTE_NOT_FOUND
 AUTHENTICATION_FAILED
 ```
 
-Important principle:
+The iOS client should rely on `code`, not exact English `message`.
 
-```text
-iOS should rely on `code`,
-not exact English `message`.
-```
+Internal database/provider details should not be exposed.
 
-Internal database/provider details should not be exposed to clients.
-
----
-
-# 18. API Input Validation
+## 18. API Input Validation
 
 Pydantic validates API boundaries.
 
-Current examples:
+User:
 
-### User
-
-```text
-name:
-    min 2
-    max 100
-
-email:
-    valid email format
-
-password:
-    min 8
-    max 128
+``` text
+name: 2–100 characters
+email: valid email
+password: 8–128 characters
 ```
 
-Names are stripped and blank names are rejected.
+Names are stripped and blank names are rejected. Passwords are not
+stripped.
 
-Passwords are **not** stripped because changing a password silently is undesirable.
+Notes:
 
-### Notes
-
-```text
-title:
-    min 1
-    max 255
-
-content:
-    min 1
+``` text
+title: 1–255 characters
+content: at least 1 character
 ```
 
 Blank title/content values are rejected.
 
-Pagination is constrained using FastAPI query validation.
+Pagination is constrained through FastAPI query validation.
 
-Important distinction:
+## 19. Redis
 
-```text
-Pydantic validation
-        =
-Is this input structurally valid?
+Redis is implemented as a performance/temporary data layer. PostgreSQL
+remains the source of truth.
 
-Service logic
-        =
-Is this operation allowed?
-```
+Configuration:
 
----
-
-# 19. Redis
-
-Redis has now been **implemented and feature-tested**.
-
-Redis is used as a performance/temporary data layer.
-
-PostgreSQL remains the source of truth.
-
-Redis configuration:
-
-```text
+``` text
 REDIS_URL=redis://localhost:6379/0
 ```
 
-Local connectivity has been verified.
+`RedisService` centralizes:
 
----
-
-## Redis Infrastructure
-
-Redis connection:
-
-```text
-app/db/redis.py
-```
-
-Application-level Redis operations are centralized in:
-
-```text
-app/services/redis_service.py
-```
-
-`RedisService` currently supports:
-
-```text
+``` text
 GET
 SET
 DELETE
@@ -698,25 +605,11 @@ INCREMENT
 TTL
 ```
 
-JSON serialization/deserialization is handled inside `RedisService`.
+Only `GET /notes/` is currently cached.
 
-Application services do not directly perform Redis JSON serialization.
+Strategy:
 
----
-
-# 20. Redis Notes Cache
-
-Currently only:
-
-```text
-GET /notes/
-```
-
-is cached.
-
-The initial caching strategy is:
-
-```text
+``` text
 Cache-aside
 +
 Version-based invalidation
@@ -724,338 +617,242 @@ Version-based invalidation
 TTL
 ```
 
----
-
-## Cache Version
-
 Version key:
 
-```text
+``` text
 notes:user:{user_id}:version
 ```
 
-Example:
+List cache key:
 
-```text
-notes:user:7:version
-```
-
----
-
-## List Cache Key
-
-Cache key:
-
-```text
+``` text
 notes:user:{user_id}:v:{version}:list:{skip}:{limit}
 ```
 
-Example:
+TTL:
 
-```text
-notes:user:7:v:3:list:0:20
-```
-
-This provides:
-
-* user isolation
-* pagination isolation
-* version-based invalidation
-* simple debugging
-
----
-
-## Cache Read Flow
-
-```text
-GET /notes/
-      ↓
-Get user's cache version
-      ↓
-Build versioned key
-      ↓
-Redis GET
-   ↙       ↘
- HIT       MISS
-  ↓          ↓
-Return    PostgreSQL
-             ↓
-       NoteListResponse
-             ↓
-      model_dump(mode="json")
-             ↓
-        Redis SET
-         TTL 60 sec
-             ↓
-          Return
-```
-
-Cached data is JSON-compatible.
-
-SQLAlchemy model objects are never stored directly in Redis.
-
----
-
-# 21. Redis TTL
-
-Current notes-list cache TTL:
-
-```text
+``` text
 60 seconds
 ```
 
-Versioning makes old cache keys logically obsolete immediately after a mutation.
+Successful mutations invalidate the user's notes cache by incrementing
+the version after the PostgreSQL mutation.
 
-TTL eventually removes old keys physically.
+Embedding data is not cached in Redis. Semantic-search caching is
+deferred.
 
----
+## 20. Chunking
 
-# 22. Redis Cache Invalidation
+`app/services/chunking_service.py` implements the initial
+character-based chunking strategy.
 
-Cache invalidation is coordinated by `NoteService`.
+Defaults:
 
-Current helper:
-
-```text
-invalidate_notes_cache(user_id)
+``` text
+chunk_size = 1000 characters
+overlap = 200 characters
 ```
 
-It increments:
+It:
 
-```text
-notes:user:{user_id}:version
+-   rejects invalid chunk sizes
+-   rejects overlap \>= chunk size
+-   returns an empty list for empty/whitespace content
+-   produces overlapping chunks
+
+This is intentionally a simple initial strategy. More sophisticated
+document-aware chunking can be introduced later for RAG.
+
+## 21. Embedding Service
+
+Local embeddings are generated through:
+
+``` text
+Ollama
+Model: nomic-embed-text
+Dimension: 768
 ```
 
-Invalidation happens after successful PostgreSQL mutations.
+`app/services/embedding_service.py`:
 
-### Create
+-   connects to Ollama
+-   uses the configured embedding model
+-   generates embeddings
+-   validates dimensionality
 
-```text
-PostgreSQL INSERT
-      ↓
-version++
-```
+An embedding whose dimension is not 768 is rejected.
 
-### Update
+## 22. Embedding Ingestion
 
-```text
-PostgreSQL UPDATE
-      ↓
-version++
-```
+`app/services/embedding_ingestion_service.py` coordinates:
 
-### Delete
-
-```text
-PostgreSQL DELETE
-      ↓
-version++
-```
-
-Database mutation occurs before cache invalidation.
-
----
-
-# 23. Why Version-Based Invalidation
-
-We do not use Redis `KEYS` to find and delete every pagination key.
-
-For example:
-
-```text
-notes:user:7:v:5:list:0:20
-notes:user:7:v:5:list:20:20
-notes:user:7:v:5:list:40:20
-```
-
-After a mutation:
-
-```text
-version 5 → version 6
-```
-
-New requests use:
-
-```text
-notes:user:7:v:6:...
-```
-
-Old version-5 entries are no longer used and eventually expire through TTL.
-
----
-
-# 24. Redis Responsibilities
-
-Current architecture:
-
-```text
-NoteRepository
-    ↓
-PostgreSQL only
-
-RedisService
-    ↓
-Redis operations only
-
-NoteService
-    ↓
-Coordinates PostgreSQL + Redis
-```
-
-Redis is intentionally **not** placed inside `NoteRepository`.
-
-The repository remains responsible for persistence.
-
-The service layer decides when caching is useful.
-
----
-
-# 25. Redis Testing
-
-Redis implementation has been manually feature-tested for:
-
-* Redis connectivity
-* JSON SET/GET
-* Version initialization
-* Version increment
-* Cache MISS
-* Cache HIT
-* TTL
-* Pagination-specific keys
-* User-specific cache keys
-* Create invalidation
-* Update invalidation
-* Delete invalidation
-* TTL expiration
-
-Expected lifecycle:
-
-```text
-First GET
-    ↓
-MISS
-    ↓
-PostgreSQL
-    ↓
-Redis cache
-
-Second identical GET
-    ↓
-HIT
-    ↓
-Redis
-
-Create / Update / Delete
-    ↓
-PostgreSQL mutation
-    ↓
-version++
-
-Next GET
-    ↓
-new version
-    ↓
-MISS
-    ↓
-PostgreSQL
-    ↓
-fresh Redis cache
-```
-
-Automated Redis service tests are also being developed in:
-
-```text
-tests/test_redis_service.py
-```
-
----
-
-# 26. Deferred Redis Work
-
-Not currently cached:
-
-```text
-GET /notes/{note_id}
-GET /notes/search
-```
-
-Search caching is intentionally deferred because the search architecture will evolve toward semantic/vector search.
-
-Redis failure-handling hardening is also deferred.
-
-Future production behavior may allow Redis failures to fall back to PostgreSQL rather than breaking note retrieval.
-
-This will be implemented only when production hardening becomes relevant.
-
----
-
-# 27. AI / pgvector Status
-
-Current status:
-
-```text
-PostgreSQL
-    ✓
-
-FastAPI
-    ✓
-
-SQLAlchemy
-    ✓
-
-Alembic
-    ✓
-
-Authentication
-    ✓
-
-Authorization
-    ✓
-
-Note CRUD
-    ✓
-
-PostgreSQL FTS
-    ✓
-
-Pagination
-    ✓
-
-Database indexing
-    ✓
-
-API error design
-    ✓
-
-Input validation
-    ✓
-
-Redis
-    ✓
-
-pgvector
-    → Next major area
-
+``` text
+Note content
+   ↓
+ChunkingService
+   ↓
+Chunks
+   ↓
+EmbeddingService
+   ↓
 Embeddings
-    → Later
-
-Semantic Search
-    → Later
-
-RAG
-    → Later
-
-LLM Assistant
-    → Later
+   ↓
+NoteChunk objects
+   ↓
+NoteRepository
 ```
 
----
+The ingestion service does not commit.
 
-# 28. Current Development Direction
+It uses the same SQLAlchemy session supplied by the service layer.
 
-The current roadmap is:
+If no chunks are generated, it raises an error rather than silently
+creating a note without searchable chunks.
 
-```text
+## 23. Transaction Ownership
+
+`NoteService` owns commit/rollback.
+
+``` text
+Route
+  ↓
+NoteService          ← commit / rollback
+  ↓
+NoteRepository       ← DB operations / flush only
+  ↓
+PostgreSQL
+```
+
+The repository no longer commits note mutations.
+
+Therefore:
+
+``` text
+Note
++
+NoteChunks
++
+Embeddings
+```
+
+participate in the same transaction.
+
+## 24. Create Note + Embedding Flow
+
+``` text
+POST /notes/
+      ↓
+NoteService.create_note()
+      ↓
+Create Note
+      ↓
+flush
+      ↓
+Generate chunks
+      ↓
+Generate embeddings
+      ↓
+Insert NoteChunks
+      ↓
+COMMIT
+      ↓
+Redis cache invalidation
+```
+
+A note is not committed unless embedding ingestion succeeds.
+
+## 25. Update Note + Embedding Flow
+
+``` text
+PUT /notes/{id}
+      ↓
+Verify ownership
+      ↓
+Update Note
+      ↓
+flush
+      ↓
+Delete old NoteChunks
+      ↓
+Generate new chunks
+      ↓
+Generate new embeddings
+      ↓
+Insert new NoteChunks
+      ↓
+COMMIT
+      ↓
+Redis cache invalidation
+```
+
+This prevents new note content from being committed alongside old
+chunks.
+
+## 26. Delete Note + Embedding Flow
+
+``` text
+DELETE /notes/{id}
+      ↓
+Verify ownership
+      ↓
+Delete Note
+      ↓
+COMMIT
+      ↓
+Redis invalidation
+```
+
+`note_chunks.note_id` uses `ON DELETE CASCADE`, so deleting a note
+deletes its chunks.
+
+## 27. Transaction Rollback
+
+Failed mutations explicitly roll back:
+
+``` python
+try:
+    ...
+    self.db.commit()
+except Exception:
+    self.db.rollback()
+    raise
+```
+
+This protects against partial embedding ingestion.
+
+If embedding generation fails during an update, the previous committed
+note/chunks remain intact.
+
+## 28. Current AI Status
+
+``` text
+FastAPI                         ✓
+SQLAlchemy                      ✓
+PostgreSQL                      ✓
+Alembic                         ✓
+Authentication                  ✓
+Authorization                   ✓
+Note CRUD                       ✓
+PostgreSQL Full-Text Search    ✓
+Pagination                      ✓
+Database Indexing               ✓
+API Error Design                ✓
+Input Validation                ✓
+Redis                           ✓
+pgvector                        ✓
+Local Embeddings                ✓
+Embedding Ingestion             ✓
+Semantic Retrieval              ✓
+
+RAG Context Assembly            → Next
+LLM Answer Generation           → Later
+Sources / Citations             → Later
+AI Assistant                    → Later
+```
+
+## 29. Current Roadmap
+
+``` text
 Backend Foundation
        ↓
 Authentication
@@ -1068,19 +865,25 @@ Pagination
        ↓
 Indexing
        ↓
-API validation/error design
+API Validation / Error Design
        ↓
 Redis
        ↓
 pgvector
        ↓
-Embeddings
+Local Embeddings
+       ↓
+Embedding Ingestion
        ↓
 Semantic Search
        ↓
-RAG
+RAG Context Assembly       ← NEXT
        ↓
-LLM Assistant
+LLM Answer Generation
+       ↓
+Sources / Citations
+       ↓
+AI Assistant
        ↓
 iOS Integration / AI Features
        ↓
@@ -1093,15 +896,43 @@ Production Hardening
 Deployment
 ```
 
-The next major technical area is **pgvector**.
+## 30. Deliberately Deferred Work
 
----
+### Chunking
 
-# 29. Specialized Chat Strategy
+Current implementation is character-based with `1000 / 200`. More
+sophisticated chunking can come later.
 
-Because this project will span many months, large independent technical areas use dedicated chats.
+### Embedding Performance
 
-```text
+Embeddings are currently generated synchronously, one chunk at a time.
+Batching/background processing can be introduced if needed.
+
+### Redis
+
+Semantic-search caching is not currently implemented.
+
+### Embedding Provider Resilience
+
+Retry/backoff/timeout hardening can be introduced later.
+
+### RAG
+
+Current system has semantic retrieval but not yet:
+
+``` text
+retrieval
++
+context assembly
++
+LLM generation
++
+sources/citations
+```
+
+## 31. Specialized Chat Strategy
+
+``` text
 AI KNOWLEDGE PLATFORM
 │
 ├── MAIN PROJECT CHAT
@@ -1122,23 +953,20 @@ AI KNOWLEDGE PLATFORM
 │   ├── pgvector
 │   ├── embeddings
 │   ├── chunking
-│   ├── semantic search
+│   ├── semantic retrieval
 │   └── RAG
 │
 └── FUTURE SPECIALIZED CHATS
 ```
 
-Redis fundamentals have already been learned and should **not** be re-taught unless explicitly requested.
-
-The Redis chat is now an implementation/debugging workspace.
+Redis fundamentals have already been learned and should not be re-taught
+unless explicitly requested.
 
 The Main Project Chat remains the architectural owner.
 
----
+## 32. Specialized Chat Workflow
 
-# 30. Specialized Chat Workflow
-
-```text
+``` text
 Main Project Chat
        ↓
 Identify feature requirement
@@ -1158,19 +986,16 @@ Update project-context.md
 Git milestone
 ```
 
-Do not create a separate chat for every small feature.
+Dedicated chats are for large independent technical areas, not every
+small feature.
 
-Dedicated chats are for large independent technical areas.
-
----
-
-# 31. Git Strategy
+## 33. Git Strategy
 
 Git/GitHub are used throughout the project.
 
-Important completed milestones include:
+Completed milestones include:
 
-```text
+``` text
 Initial project setup
 Add application configuration
 Add Alembic database migrations
@@ -1189,23 +1014,18 @@ Add paginated note responses
 Add note query index
 Standardize API error responses
 Strengthen API input validation
-```
-
-Current Redis milestone:
-
-```text
 Add Redis notes caching
 ```
 
-Meaningful commits should represent stable project milestones rather than every tiny change.
+Recommended current PGVector milestone:
 
----
+``` text
+feat: integrate pgvector semantic search and embeddings
+```
 
-# 32. Development Workflow
+## 34. Development Workflow
 
-For major features:
-
-```text
+``` text
 Plan
  ↓
 Implement
@@ -1221,43 +1041,35 @@ Update project-context.md
 Git commit
 ```
 
-Do not move to the next major subsystem while the current integration is unverified.
+Do not move to the next major subsystem while the current integration is
+unverified.
 
----
+## 35. Project Context Maintenance
 
-# 33. Project Context Maintenance
+`project-context.md` is the durable project-level source of context
+across conversations.
 
-`project-context.md` is the durable project-level source of context across conversations.
-
-It should describe **current truth**, not act as a diary.
+It describes current truth, not a diary.
 
 When architecture changes:
 
-1. Update the relevant section.
-2. Remove obsolete descriptions.
-3. Keep important architectural decisions.
-4. Do not append contradictory historical states.
+1.  Update the relevant section.
+2.  Remove obsolete descriptions.
+3.  Keep important architectural decisions.
+4.  Do not append contradictory historical states.
 
-Do not store:
+Do not store every debugging mistake, terminal command, temporary test
+data, abandoned implementation, full source code, or detailed lesson
+transcript.
 
-* Every debugging mistake
-* Every terminal command
-* Temporary test data
-* Abandoned implementations
-* Full source code
-* Detailed lesson transcripts
+Git history preserves implementation history. Source code preserves
+implementation details.
 
-Git history preserves implementation history.
+## 36. Source-of-Truth Hierarchy
 
-Source code preserves implementation details.
+When information conflicts:
 
----
-
-# 34. Source-of-Truth Hierarchy
-
-When information conflicts, use:
-
-```text
+``` text
 Actual source code
        +
 Database / migrations
@@ -1269,17 +1081,15 @@ project-context.md
 Current conversations
 ```
 
-If `project-context.md` conflicts with the actual implementation, verify the implementation and update the context file.
+If `project-context.md` conflicts with the actual implementation, verify
+the implementation and update the context file.
 
----
+## 37. Current Project State
 
-# 35. Current Project State
+The project now has a complete traditional backend foundation plus an
+initial AI retrieval layer:
 
-The project has moved beyond basic backend learning.
-
-The following foundation is now operational:
-
-```text
+``` text
 FastAPI
 SQLAlchemy
 PostgreSQL
@@ -1296,45 +1106,52 @@ Database indexing
 API error contracts
 Input validation
 Redis caching
-```
-
-The project is now transitioning from the **traditional backend foundation** into the **AI retrieval layer**.
-
----
-
-# 36. Immediate Next Direction
-
-Next major area:
-
-```text
 pgvector
+Ollama embeddings
+Embedding ingestion
+Semantic search
 ```
 
-The goal is to add vector storage/search to PostgreSQL without prematurely implementing the entire AI system.
+The next transition is from semantic retrieval to RAG.
 
-The next progression will be:
+## 38. Immediate Next Direction
 
-```text
+The next major phase is **RAG Context Assembly**.
+
+The system already retrieves relevant chunks:
+
+``` text
+Question
+   ↓
+Query Embedding
+   ↓
 pgvector
-    ↓
-Understand vector storage/indexing
-    ↓
-Integrate with PostgreSQL
-    ↓
-Design note/chunk embedding storage
-    ↓
-Embeddings
-    ↓
-Semantic Search
-    ↓
-RAG
+   ↓
+Relevant NoteChunks
 ```
 
-The AI architecture should continue to be built incrementally.
+Next:
 
----
+``` text
+User Question
+      ↓
+Semantic Retrieval
+      ↓
+Relevant Chunks
+      ↓
+Context Assembly
+      ↓
+LLM
+      ↓
+Grounded Answer
+      ↓
+Sources / Citations
+```
 
-# 37. Core Project Principle
+The RAG system should be implemented incrementally rather than jumping
+directly into a complete chatbot.
+
+## 39. Core Project Principle
 
 Build a real product, not a collection of tutorials.
 
@@ -1344,13 +1161,12 @@ Every technology should answer:
 
 The project should remain:
 
-* Understandable
-* Testable
-* Incrementally built
-* Secure
-* Maintainable
-* Production-oriented
-* Strong enough to demonstrate real engineering ability
-* Capable of evolving into an AI/RAG system
-
+-   Understandable
+-   Testable
+-   Incrementally built
+-   Secure
+-   Maintainable
+-   Production-oriented
+-   Strong enough to demonstrate real engineering ability
+-   Capable of evolving into a real AI/RAG system
 

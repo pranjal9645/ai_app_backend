@@ -5,8 +5,11 @@ from app.schemas.note import (
     NoteCreate,
     NoteResponse,
     NoteUpdate,
-    NoteListResponse
+    NoteListResponse,
+    SemanticSearchResponse
 )
+
+from app.services.semantic_search_service import SemanticSearchService
 from app.models.user import User
 from app.services.note_service import NoteService
 from app.core.security import get_current_user
@@ -36,6 +39,33 @@ def search_notes(query : str = Query(... , min_length=1), current_user : User = 
     
     service = NoteService(db)
     return service.search_notes(user_id=current_user.id , query=query , skip=skip,limit=limit)
+
+@router.get("/semantic-search" , response_model=SemanticSearchResponse)
+def semantic_search(q : str = Query(... , min_length=1) , limit : int = Query(5 , ge=1 , le=20),db : Session = Depends(get_db) , current_user : User = Depends(get_current_user)):
+    service = SemanticSearchService(db)
+
+    results = service.search(user_id=current_user.id , query=q , limit=limit)
+
+    items = [
+        {
+              "note_id": chunk.note_id,
+            "chunk_id": chunk.id,
+            "chunk_index": chunk.chunk_index,
+            "content": chunk.content,
+            "distance": float(distance)
+        }
+        for chunk , distance in results
+    ]
+
+
+    return {
+        "items" : items ,
+        "query" : q,
+        "limit" : limit
+    }
+
+                    
+
 
 @router.get("/{note_id}", response_model=NoteResponse)
 def get_note(

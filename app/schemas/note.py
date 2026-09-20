@@ -49,3 +49,17 @@ class NoteListResponse(BaseModel):
     skip : int
     limit : int
     has_more : bool
+
+
+class SemanticSearchItem(BaseModel):
+    note_id: int
+    chunk_id: int
+    chunk_index: int
+    content: str
+    distance: float
+
+
+class SemanticSearchResponse(BaseModel):
+    items: list[SemanticSearchItem]
+    query: str
+    limit: int

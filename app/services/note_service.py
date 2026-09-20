@@ -4,13 +4,16 @@ from app.repositories.note_repository import NoteRepository
 from app.core.exceptions import NoteNotFoundError
 from app.services.redis_service import RedisService
 from app.schemas.note import NoteListResponse
+from app.services.embedding_ingestion_service import EmbeddingIngestionService
 
 
 class NoteService:
 
     def __init__(self , db : Session):
+        self.db = db
         self.note_repository = NoteRepository(db)
         self.redis_service = RedisService()
+        self.embedding_ingestion_service = EmbeddingIngestionService(db)
 
 
     def invalidate_notes_cache(self , user_id : int):
@@ -18,10 +21,18 @@ class NoteService:
         self.redis_service.increment(version_key)
 
     def create_note(self , title : str , content : str , user_id : int):
-        note = Note(title = title , content = content , user_id = user_id)
-        note = self.note_repository.create(note)
-        self.invalidate_notes_cache(user_id=user_id)
+        try:
+          note = Note(title = title , content = content , user_id = user_id)
+          note = self.note_repository.create(note)
+       
+          self.embedding_ingestion_service.process_note(note_id=note.id , content=note.content)
+          self.db.commit()
 
+        except Exception:
+            self.db.rollback()
+            raise
+
+        self.invalidate_notes_cache(user_id=user_id)
         return note
 
 
@@ -80,10 +91,23 @@ class NoteService:
         if note.user_id != user_id:
             raise NoteNotFoundError("Note not found")
 
-        note.title = title
-        note.content = content
+        content_changed = note.content != content
 
-        note = self.note_repository.update(note)
+        try:
+          note.title = title
+          note.content = content
+
+          note = self.note_repository.update(note)
+       
+
+          if content_changed:
+            self.embedding_ingestion_service.rebuild_note(note_id=note.id , content=note.content)
+
+          self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
         self.invalidate_notes_cache(user_id=user_id)
 
         return note
@@ -97,8 +121,12 @@ class NoteService:
 
       if note.user_id != user_id:
            raise NoteNotFoundError("Note not found")
-
-      self.note_repository.delete(note)
+      try:
+        self.note_repository.delete(note)
+        self.db.commit()
+      except Exception:
+          self.db.rollback()
+          raise
 
       self.invalidate_notes_cache(user_id=user_id)
       

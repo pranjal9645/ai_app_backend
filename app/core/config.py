@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str
     jwt_access_token_expire_minutes: int
     redis_url : str
+    ollama_host: str = "http://localhost:11434"
+    embedding_model: str = "nomic-embed-text"
     
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH , env_file_encoding="utf-8" , case_sensitive=False)
 

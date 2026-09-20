@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 from app.models.note import Note
-from sqlalchemy import func
+from sqlalchemy import func , select
+from app.models.note_chunk import NoteChunk
+from sqlalchemy import delete
+from app.models.note_chunk import NoteChunk
+
 
 class NoteRepository:
 
@@ -9,7 +13,7 @@ class NoteRepository:
 
     def create(self , note : Note):
          self.db.add(note)
-         self.db.commit()
+         self.db.flush()
          self.db.refresh(note)
 
          return note
@@ -32,13 +36,13 @@ class NoteRepository:
          )
 
     def update(self , note : Note):
-         self.db.commit()
+         self.db.flush()
          self.db.refresh(note)
          return note
 
     def delete(self , note : Note):
          self.db.delete(note)
-         self.db.commit()
+         self.db.flush()
 
 
     def search_by_user(self , user_id : int , query : int , skip : int = 0 , limit : int = 20):
@@ -80,4 +84,33 @@ class NoteRepository:
         )
         .count()
     )
+
+    def semantic_search(self  , user_id : int , query_embedding : list[float] ,limit : int = 5) -> list[tuple[NoteChunk , float]]:
+         distance = NoteChunk.embedding.cosine_distance(query_embedding)
+
+         statement = (
+              select(NoteChunk , distance.label("distance"))
+              .join(Note , Note.id == NoteChunk.note_id)
+              .where(Note.user_id == user_id)
+              .order_by(distance)
+              .limit(limit)
+         )
+
+         return list(self.db.execute(statement).all())
+    
+    def create_chunks(self , chunks : list[NoteChunk]) -> list[NoteChunk]:
+         self.db.add_all(chunks)
+         self.db.flush()
+
+         return chunks
+    def delete_chunks_by_note_id(self , note_id : int) -> None:
+         self.db.execute(
+              delete(NoteChunk).where(
+                   NoteChunk.note_id == note_id
+              )
+         )
+
+         self.db.flush()
+
+
         
