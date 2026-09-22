@@ -97,6 +97,22 @@ class NoteRepository:
          )
 
          return list(self.db.execute(statement).all())
+
+    def get_neighbor_chunks(self , user_id : int , note_id : int , chunk_index : int , radius : int = 1) -> list[NoteChunk]:
+         statement = (
+              select(NoteChunk)
+              .join(Note , Note.id == NoteChunk.note_id)
+              .where(
+                   Note.user_id == user_id,
+                   NoteChunk.note_id == note_id,
+                   NoteChunk.chunk_index >= chunk_index - radius,
+                   NoteChunk.chunk_index <= chunk_index + radius
+              )
+              .order_by(NoteChunk.chunk_index)
+         )
+
+         return list(self.db.execute(statement).scalars().all())
+    
     
     def create_chunks(self , chunks : list[NoteChunk]) -> list[NoteChunk]:
          self.db.add_all(chunks)

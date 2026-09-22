@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     redis_url : str
     ollama_host: str = "http://localhost:11434"
     embedding_model: str = "nomic-embed-text"
+    llm_model : str = "gemma3:1b"
+    rag_max_distance : float = 0.40
+
     
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH , env_file_encoding="utf-8" , case_sensitive=False)
 
