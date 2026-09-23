@@ -6,6 +6,7 @@ class RetrievedChunk(BaseModel):
     chunk_index: int
     content: str
     distance: float
+    is_anchor : bool = False
 
 class RAGContextRequest(BaseModel):
     query : str = Field(min_length=1)

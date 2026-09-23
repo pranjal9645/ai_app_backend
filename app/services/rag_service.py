@@ -46,6 +46,7 @@ class RagService:
                 chunk_index=chunk.chunk_index,
                 content=chunk.content,
                 distance=distance,
+                is_anchor=True
             )
         )
              
@@ -64,7 +65,8 @@ class RagService:
                         chunk_id=neighbor.id,
                         chunk_index=neighbor.chunk_index,
                         content=neighbor.content,
-                        distance=chunk.distance
+                        distance=chunk.distance,
+                        is_anchor=False
                     )
                 )
 
@@ -126,8 +128,17 @@ class RagService:
         unique_chunks = {}
 
         for chunk in chunks:
-            unique_chunks[chunk.chunk_id] = chunk
 
+            existing = unique_chunks.get(chunk.chunk_id)
+
+            if existing is None:
+                unique_chunks[chunk.chunk_id] = existing
+                continue
+
+            if chunk.is_anchor:
+                existing.is_anchor = True
+                existing.distance = chunk.distance
+            
         return sorted(
             unique_chunks.values(),
             key = lambda chunk : (chunk.note_id , chunk.chunk_index)
@@ -136,18 +147,49 @@ class RagService:
     def apply_context_budget(self , chunks : list[RetrievedChunk]) -> list[RetrievedChunk]:
         max_chars = settings.rag_max_context_chars
 
+        anchors = [
+            chunk 
+            for chunk in chunks
+            if chunk.is_anchor
+        ]
+
+        neighbors = [
+            chunk
+            for chunk in chunks
+            if not chunk.is_anchor
+        ]
+
         selected_chunks = []
+        selected_ids = set()
         total_chars = 0
 
-        for chunk in chunks:
+        # Select semantic anchors first.
+        for chunk in anchors:
             chunk_size = len(chunk.content)
 
             if total_chars + chunk_size > max_chars:
-                break
+                continue
 
             selected_chunks.append(chunk)
+            selected_ids.add(chunk.chunk_id)
             total_chars += chunk_size
 
-        return selected_chunks
+         # Use remaining budget for neighboring chunks.
+        for chunk in neighbors:
+            
+            if chunk.chunk_id in selected_ids:
+               continue
 
+            chunk_size = len(chunk.content)
+
+            if total_chars + chunk_size > max_chars:
+                  continue
+            
+            selected_chunks.append(chunk)
+            selected_ids.add(chunk.chunk_id)
+            total_chars += chunk_size
+            
+         # Restore document order for coherent context.
+
+        return sorted(selected_chunks , key=lambda chunk : (chunk.note_id , chunk.chunk_index))
     
