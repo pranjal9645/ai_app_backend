@@ -93,7 +93,13 @@ class RagService:
                 answer="I couldn't find relevant information in your notes.",
                 sources=[]
             )
+        chunks = self.limit_anchor_diversity(chunks=chunks)
 
+        if not chunks:
+            return RAGResult(
+        answer="I couldn't find enough relevant information to answer this question.",
+        sources=[],
+    )
         chunks = self.expand_with_neighbors(user_id=user_id , chunks=chunks)
 
         chunks = self.apply_context_budget(chunks=chunks)
@@ -188,8 +194,25 @@ class RagService:
             selected_chunks.append(chunk)
             selected_ids.add(chunk.chunk_id)
             total_chars += chunk_size
-            
+
          # Restore document order for coherent context.
 
         return sorted(selected_chunks , key=lambda chunk : (chunk.note_id , chunk.chunk_index))
+
+    def limit_anchor_diversity(self , chunks : list[RetrievedChunk]) -> list[RetrievedChunk]:
+        max_per_note = settings.rag_max_anchors_per_note
+
+        note_counts = {}
+        selected_chunks = []
+
+        for chunk in chunks:
+            count = note_counts.get(chunk.note_id , 0)
+
+            if count >= max_per_note:
+                continue
+
+            selected_chunks.append(chunk)
+            note_counts[chunk.note_id] = count + 1
+
+        return selected_chunks
     
