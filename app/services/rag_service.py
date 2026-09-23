@@ -94,6 +94,16 @@ class RagService:
 
         chunks = self.expand_with_neighbors(user_id=user_id , chunks=chunks)
 
+        chunks = self.apply_context_budget(chunks=chunks)
+
+        if not chunks:
+            return RAGResult(
+                answer="I couldn't find enough relevant information to answer this question.",
+                sources=[]
+            )
+
+        
+
         prompt = self.build_prompt_from_chunks(query=query , chunks=chunks)
 
         answer = self.llm_service.generate(system_prompt=prompt.system_prompt , user_prompt=prompt.user_prompt)
@@ -122,5 +132,22 @@ class RagService:
             unique_chunks.values(),
             key = lambda chunk : (chunk.note_id , chunk.chunk_index)
         )
+
+    def apply_context_budget(self , chunks : list[RetrievedChunk]) -> list[RetrievedChunk]:
+        max_chars = settings.rag_max_context_chars
+
+        selected_chunks = []
+        total_chars = 0
+
+        for chunk in chunks:
+            chunk_size = len(chunk.content)
+
+            if total_chars + chunk_size > max_chars:
+                break
+
+            selected_chunks.append(chunk)
+            total_chars += chunk_size
+
+        return selected_chunks
 
     

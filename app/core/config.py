@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     embedding_model: str = "nomic-embed-text"
     llm_model : str = "gemma3:1b"
     rag_max_distance : float = 0.40
+    rag_max_context_chars:int = 12000
 
     
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH , env_file_encoding="utf-8" , case_sensitive=False)
