@@ -45,7 +45,9 @@ def generate_rag_answer(request : RAGContextRequest , db : Session = Depends(get
                 chunk_id=source.chunk_id,
                 chunk_index=source.chunk_index,
                 content=source.content,
-                distance=source.distance 
+                distance=source.distance,
+                retrieval_sources=source.retrieval_sources,
+                hybrid_score=source.hybrid_score
             )
            for source in result.sources
         ]

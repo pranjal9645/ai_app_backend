@@ -1,12 +1,15 @@
 from pydantic import BaseModel , Field
+from typing import Literal
 
 class RetrievedChunk(BaseModel):
     note_id: int
     chunk_id: int
     chunk_index: int
     content: str
-    distance: float
+    distance: float | None = None
     is_anchor : bool = False
+    retrieval_sources : list[Literal["semantic", "lexical", "neighbor"]] = ["semantic"]
+    hybrid_score : float | None = None
 
 class RAGContextRequest(BaseModel):
     query : str = Field(min_length=1)
@@ -33,7 +36,11 @@ class RAGSource(BaseModel):
     chunk_id: int
     chunk_index: int
     content: str
-    distance: float
+    distance: float | None
+    retrieval_sources : list[Literal["semantic", "lexical", "neighbor"]] = ["semantic"]
+    hybrid_score : float | None
+
+
 
 
 

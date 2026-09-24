@@ -3,7 +3,6 @@ from app.models.note import Note
 from sqlalchemy import func , select
 from app.models.note_chunk import NoteChunk
 from sqlalchemy import delete
-from app.models.note_chunk import NoteChunk
 
 
 class NoteRepository:
@@ -119,6 +118,7 @@ class NoteRepository:
          self.db.flush()
 
          return chunks
+     
     def delete_chunks_by_note_id(self , note_id : int) -> None:
          self.db.execute(
               delete(NoteChunk).where(
@@ -127,6 +127,26 @@ class NoteRepository:
          )
 
          self.db.flush()
+
+    def full_text_search(self , user_id : int , query : int , limit : int = 5) -> list[tuple[NoteChunk , float]]:
+         search_vector = func.to_tsvector("english" , Note.content)
+         search_query = func.plainto_tsquery("english" , query)
+
+         rank = func.ts_rank(search_vector , search_query)
+
+         statement = (
+              select(NoteChunk , rank.label("rank"))
+              .join(Note , Note.id == NoteChunk.note_id)
+               .where(Note.user_id == user_id ,
+                      search_vector.op("@@")(search_query)
+                    )
+               .order_by(rank.desc())
+               .limit(limit)
+         )
+
+         return list(
+              self.db.execute(statement).all()
+         )
 
 
         
