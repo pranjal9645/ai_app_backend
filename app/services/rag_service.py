@@ -262,8 +262,8 @@ class RagService:
         return self.fuse_hybrid_results(semantic_chunks=semantic_chunks , lexical_chunks=lexical_chunks)
 
     def fuse_hybrid_results(self , semantic_chunks : list[RetrievedChunk] , lexical_chunks : list[RetrievedChunk]) -> list[RetrievedChunk]:
-        k = 60
-
+        k = 60 # Constant
+        # we have used RRF (RECIPROCAL RANK FUSION technique) here.
         chunks_by_id = {}
 
         scores = {}
@@ -300,7 +300,7 @@ class RagService:
         for chunk_id , chunk in chunks_by_id.items():
             chunk.hybrid_score = scores[chunk_id]
             results.append(chunk)
-
+     
 
         return sorted(results , key=lambda chunk : chunk.hybrid_score or 0.0 , reverse=True)
 
@@ -309,6 +309,12 @@ class RagService:
         limit = settings.rag_hybrid_top_k
 
         return chunks[:limit]
+
+    def generate_answer_from_context(self , query : str , context : str) -> str:
+
+        prompt = self.prompt_construction_service.build(question=query , context=context)
+
+        return self.llm_service.generate(system_prompt=prompt.system_prompt , user_prompt=prompt.user_prompt)
 
 
     

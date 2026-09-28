@@ -823,7 +823,12 @@ This protects against partial embedding ingestion.
 If embedding generation fails during an update, the previous committed
 note/chunks remain intact.
 
-## 28. Current AI Status
+## 28. Current AI / RAG Status
+
+The project now has the initial RAG pipeline built incrementally on top of
+semantic retrieval.
+
+Completed AI/RAG capabilities:
 
 ``` text
 FastAPI                         ✓
@@ -843,14 +848,488 @@ pgvector                        ✓
 Local Embeddings                ✓
 Embedding Ingestion             ✓
 Semantic Retrieval              ✓
-
-RAG Context Assembly            → Next
-LLM Answer Generation           → Later
-Sources / Citations             → Later
-AI Assistant                    → Later
+RAG Context Assembly            ✓
+Prompt Construction             ✓
+Local LLM Generation            ✓
+Sources / Citations             ✓
+Retrieval Relevance Filtering   ✓
+Neighbor Chunk Expansion        ✓
+Context Budgeting               ✓
+Anchor-Aware Retrieval          ✓
+Anchor Diversity                ✓
+Hybrid Semantic + Lexical      ✓
+RRF Score Fusion                ✓
+Retrieval Evaluation            ✓
 ```
 
-## 29. Current Roadmap
+The AI layer is now beyond basic semantic search and has an initial
+production-oriented RAG architecture.
+
+## 29. RAG Architecture
+
+The current RAG flow is:
+
+``` text
+User Question
+      ↓
+Query Embedding
+      ↓
+Semantic / Lexical / Hybrid Retrieval
+      ↓
+Relevance Filtering / RRF
+      ↓
+Anchor Diversity
+      ↓
+Neighbor Chunk Expansion
+      ↓
+Anchor-Aware Context Budget
+      ↓
+Context Assembly
+      ↓
+Prompt Construction
+      ↓
+Local LLM
+      ↓
+Grounded Answer + Sources
+```
+
+The RAG system is intentionally implemented as separate stages so retrieval,
+context quality, prompting, generation, and evaluation can evolve
+independently.
+
+## 30. RAG Context Assembly
+
+`app/schemas/rag.py` contains the RAG retrieval/context models.
+
+`RetrievedChunk` currently carries:
+
+``` text
+note_id
+chunk_id
+chunk_index
+content
+distance | None
+is_anchor
+retrieval_sources
+hybrid_score | None
+```
+
+`retrieval_sources` can contain:
+
+``` text
+semantic
+lexical
+neighbor
+```
+
+A chunk may be retrieved by both semantic and lexical search, so retrieval
+source information is merged instead of representing the chunk twice.
+
+Context assembly formats retrieved chunks with source metadata before they
+are supplied to the prompt builder.
+
+## 31. RAG Retrieval Flow
+
+`RAGService.retrieve()`:
+
+``` text
+User query
+   ↓
+EmbeddingService
+   ↓
+NoteRepository.semantic_search()
+   ↓
+RetrievedChunk objects
+```
+
+The RAG service preserves the user's ownership boundary. Retrieval is always
+performed against the authenticated user's notes before context reaches the
+LLM.
+
+## 32. Relevance Filtering
+
+A configurable semantic relevance threshold was introduced:
+
+``` env
+RAG_MAX_DISTANCE=0.40
+```
+
+Lower cosine distance means greater semantic similarity.
+
+The threshold is applied to semantic candidates before neighbor expansion.
+If no chunks pass the threshold, the LLM is not called.
+
+For hybrid/RRF retrieval, raw semantic distance is not used as the final
+hybrid relevance score. Hybrid retrieval uses rank-based RRF instead.
+
+## 33. Neighbor Chunk Expansion
+
+Relevant semantic anchors can be expanded with neighboring chunks from the
+same note.
+
+Repository support:
+
+``` text
+get_neighbor_chunks()
+```
+
+The expansion flow is:
+
+``` text
+Semantic Candidates
+      ↓
+Relevance Filtering
+      ↓
+Anchor Chunks
+      ↓
+Neighbor Expansion
+      ↓
+Deduplication
+      ↓
+Document Ordering
+```
+
+Neighbor chunks inherit the anchor's retrieval distance for context handling;
+the inherited distance is not treated as the neighbor's own semantic score.
+
+## 34. Context Budgeting
+
+A configurable character budget limits the amount of retrieved context sent
+to the LLM:
+
+``` env
+RAG_MAX_CONTEXT_CHARS=12000
+```
+
+The current implementation uses a character budget rather than exact token
+counting.
+
+Anchor chunks are prioritized before neighbors when selecting context, after
+which the selected chunks are placed back into document order.
+
+## 35. Anchor-Aware Retrieval
+
+`RetrievedChunk` distinguishes direct semantic matches from supporting
+neighbors:
+
+``` text
+is_anchor = True
+```
+
+for semantic retrieval results, while neighbor chunks are non-anchor.
+
+This distinction is preserved through deduplication and context budgeting.
+
+This allows the system to prioritize chunks that directly matched the user
+question without treating every supporting chunk as equally relevant.
+
+## 36. Retrieval Diversity
+
+A configurable per-note anchor limit was added:
+
+``` env
+RAG_MAX_ANCHORS_PER_NOTE=2
+```
+
+Only semantic anchors are limited by this setting. Neighbor chunks are not
+restricted by the anchor-per-note limit.
+
+This prevents one note from dominating the semantic retrieval candidates while
+still allowing surrounding context to be included.
+
+## 37. Prompt Construction
+
+The RAG prompt explicitly instructs the LLM to answer using only the supplied
+context and to state when the requested information is not available in the
+user's notes.
+
+Important principle:
+
+``` text
+Retrieval ≠ Truth
+```
+
+Retrieved chunks are evidence supplied to the LLM; the application controls
+which chunks are allowed into the prompt.
+
+## 38. LLM Integration
+
+A dedicated `LLMService` uses Ollama for local generation.
+
+Embedding and generation models are configured separately:
+
+``` env
+EMBEDDING_MODEL=nomic-embed-text
+LLM_MODEL=<configured generation model>
+```
+
+The LLM receives:
+
+``` text
+System Prompt
++
+User Prompt containing assembled context and question
+```
+
+## 39. Sources and Citations
+
+The RAG answer response returns both:
+
+``` text
+answer
+sources
+```
+
+Each source contains information identifying the originating note/chunk and
+its retrieval metadata.
+
+The same retrieved chunks used to construct the LLM context are returned as
+sources. This keeps application-level source truth aligned with the context
+actually given to the model.
+
+## 40. Hybrid Search
+
+Lesson 11 introduced hybrid retrieval combining:
+
+``` text
+Semantic Search
++
+PostgreSQL Full-Text Search
+```
+
+Semantic retrieval captures meaning, while lexical retrieval captures exact
+terms.
+
+The lexical repository search uses PostgreSQL full-text search with
+`to_tsvector`, `plainto_tsquery`, and `ts_rank`.
+
+A chunk can be returned by both systems. Its retrieval metadata therefore
+tracks multiple sources rather than duplicating the chunk.
+
+Important observation from retrieval evaluation: lexical retrieval can fail
+when a relevant chunk is semantically related to a query but does not contain
+the query's exact searchable terms. For example, the current evaluation's JWT
+and embeddings cases returned no lexical results while semantic retrieval
+found the relevant chunks.
+
+This is expected behavior and demonstrates the complementary roles of lexical
+and semantic retrieval.
+
+## 41. Reciprocal Rank Fusion
+
+Raw semantic distance and PostgreSQL lexical rank are not directly comparable.
+Hybrid retrieval therefore uses Reciprocal Rank Fusion (RRF):
+
+``` text
+RRF score = 1 / (k + rank)
+```
+
+with:
+
+``` text
+k = 60
+```
+
+Semantic and lexical rankings are fused by chunk ID. A chunk appearing in
+both rankings receives contributions from both ranks.
+
+Hybrid retrieval then selects the configured number of top results:
+
+``` env
+RAG_HYBRID_TOP_K=5
+```
+
+Hybrid retrieval should not be passed through the old semantic-distance
+threshold because lexical results do not necessarily have a semantic distance.
+
+## 42. Retrieval Evaluation
+
+Lesson 13 added a dedicated retrieval evaluation package:
+
+``` text
+app/evaluation/
+├── __init__.py
+├── retrieval_dataset.py
+├── retrieval_models.py
+├── retrieval_metrics.py
+├── retrieval_evaluator.py
+├── retrieval_summary.py
+└── retrieval_comparison.py
+```
+
+The evaluation dataset currently contains five representative test cases
+covering pgvector, Redis caching, JWT authentication, hybrid search, and
+embedding generation.
+
+Each test case defines expected relevant chunk IDs.
+
+## 43. Retrieval Evaluation Metrics
+
+Current metrics:
+
+``` text
+Recall@K
+Precision@K
+Reciprocal Rank
+Mean Reciprocal Rank (MRR)
+```
+
+Recall@K is true chunk-level recall:
+
+``` text
+relevant chunks retrieved in top K
+-----------------------------------
+       total relevant chunks
+```
+
+This is distinct from Hit Rate@K.
+
+Precision@K measures the proportion of retrieved top-K chunks that are
+relevant.
+
+Reciprocal Rank measures the position of the first relevant result:
+
+``` text
+RR = 1 / rank
+```
+
+MRR is the mean reciprocal rank across evaluation queries.
+
+## 44. Retrieval Evaluation Strategies
+
+The same dataset and metrics are used to evaluate:
+
+``` text
+Semantic Retrieval
+       ↓
+semantic_search()
+
+Lexical Retrieval
+       ↓
+full_text_search()
+
+Hybrid Retrieval
+       ↓
+semantic_search()
+       +
+full_text_search()
+       ↓
+RRF
+```
+
+Evaluation does not modify production retrieval. It observes the retrieval
+system and measures its output.
+
+## 45. Current Retrieval Evaluation Baseline
+
+The current five-query evaluation produced:
+
+``` text
+Semantic:
+- Recall@5 = 1.0 for all five test cases
+- Precision@5 = 0.4 for the pgvector case and 0.2 for each other case
+- Reciprocal Rank = 1.0 for all five cases
+
+Lexical:
+- pgvector query retrieved chunks 6 and 7
+- Redis query retrieved chunk 8
+- JWT query returned no results
+- semantic + lexical query retrieved chunk 11
+- embeddings query returned no results
+
+Hybrid/RRF:
+- Current top-5 rankings match the semantic results for all five cases
+```
+
+These are development baseline measurements for the current five-case dataset,
+not a broad benchmark.
+
+The lexical JWT and embeddings failures are informative rather than
+necessarily bugs: those relevant chunks were semantically related to their
+queries but did not contain the corresponding exact searchable terms needed by
+the current PostgreSQL FTS configuration.
+
+The current hybrid baseline matching semantic retrieval means RRF did not
+change the top-5 ordering for these five queries. More diverse evaluation
+cases are needed before drawing broader conclusions about hybrid retrieval.
+
+## 46. Evaluation Architecture
+
+``` text
+retrieval_dataset.py
+        ↓
+RetrievalTestCase
+        ↓
+retrieval_evaluator.py
+        ↓
+Semantic / Lexical / Hybrid retrieval
+        ↓
+retrieval_metrics.py
+        ↓
+Per-query RetrievalEvaluationResult
+        ↓
+retrieval_summary.py
+        ↓
+Aggregated Recall / Precision / MRR
+        ↓
+retrieval_comparison.py
+        ↓
+Strategy comparison
+```
+
+Evaluation remains separate from the production RAG pipeline.
+
+## 47. Current API RAG Endpoints
+
+The current RAG layer includes endpoints for progressively testing the
+pipeline:
+
+``` text
+POST /rag/context
+POST /rag/prompt
+POST /rag/answer
+```
+
+The stages correspond to:
+
+``` text
+context assembly
+      ↓
+prompt construction
+      ↓
+LLM answer generation + sources
+```
+
+## 48. Current AI Status
+
+``` text
+Semantic retrieval                     ✓
+RAG context assembly                   ✓
+Prompt construction                    ✓
+Local LLM generation                   ✓
+Sources / citations                    ✓
+Relevance threshold                    ✓
+Neighbor expansion                     ✓
+Context budgeting                      ✓
+Anchor-aware retrieval                 ✓
+Anchor diversity                       ✓
+Hybrid semantic + lexical retrieval   ✓
+RRF score fusion                       ✓
+Retrieval evaluation                   ✓
+```
+
+Still to come:
+
+``` text
+More robust evaluation dataset
+Advanced retrieval evaluation
+RAG answer-quality evaluation
+Faithfulness / citation correctness
+RAG production hardening
+AI assistant UX
+```
+
+## 49. Current Roadmap
 
 ``` text
 Backend Foundation
@@ -877,31 +1356,37 @@ Embedding Ingestion
        ↓
 Semantic Search
        ↓
-RAG Context Assembly       ← NEXT
+RAG Context Assembly
        ↓
-LLM Answer Generation
+Prompt Construction
+       ↓
+LLM Generation
        ↓
 Sources / Citations
        ↓
-AI Assistant
+Retrieval Quality / Hybrid Search
+       ↓
+Retrieval Evaluation
+       ↓
+RAG Quality Evaluation
+       ↓
+AI Knowledge Assistant
        ↓
 iOS Integration / AI Features
        ↓
-Testing
+Testing / Hardening
        ↓
 Docker
-       ↓
-Production Hardening
        ↓
 Deployment
 ```
 
-## 30. Deliberately Deferred Work
+## 50. Deliberately Deferred Work
 
 ### Chunking
 
 Current implementation is character-based with `1000 / 200`. More
-sophisticated chunking can come later.
+sophisticated document-aware chunking can come later.
 
 ### Embedding Performance
 
@@ -916,21 +1401,24 @@ Semantic-search caching is not currently implemented.
 
 Retry/backoff/timeout hardening can be introduced later.
 
-### RAG
+### Retrieval
 
-Current system has semantic retrieval but not yet:
+The current hybrid/FTS implementation is intentionally simple. More advanced
+lexical matching, weighting, query parsing, and vector indexes can be
+introduced only when evaluation shows they are needed.
 
-``` text
-retrieval
-+
-context assembly
-+
-LLM generation
-+
-sources/citations
-```
+### Evaluation
 
-## 31. Specialized Chat Strategy
+The current retrieval dataset contains only five test cases. It should grow
+as the knowledge base and retrieval requirements grow. Do not optimize against
+five queries alone.
+
+### RAG Quality
+
+Answer faithfulness, context relevance, citation correctness, and other
+answer-level evaluation are not yet implemented.
+
+## 51. Specialized Chat Strategy
 
 ``` text
 AI KNOWLEDGE PLATFORM
@@ -954,7 +1442,9 @@ AI KNOWLEDGE PLATFORM
 │   ├── embeddings
 │   ├── chunking
 │   ├── semantic retrieval
-│   └── RAG
+│   ├── hybrid retrieval
+│   ├── RAG
+│   └── retrieval evaluation
 │
 └── FUTURE SPECIALIZED CHATS
 ```
@@ -964,7 +1454,7 @@ unless explicitly requested.
 
 The Main Project Chat remains the architectural owner.
 
-## 32. Specialized Chat Workflow
+## 52. Specialized Chat Workflow
 
 ``` text
 Main Project Chat
@@ -986,10 +1476,10 @@ Update project-context.md
 Git milestone
 ```
 
-Dedicated chats are for large independent technical areas, not every
-small feature.
+Dedicated chats are for large independent technical areas, not every small
+feature.
 
-## 33. Git Strategy
+## 53. Git Strategy
 
 Git/GitHub are used throughout the project.
 
@@ -1015,15 +1505,17 @@ Add note query index
 Standardize API error responses
 Strengthen API input validation
 Add Redis notes caching
+Integrate pgvector semantic search and embeddings
+Build initial RAG pipeline
+Add retrieval relevance controls
+Add hybrid retrieval with RRF
+Add retrieval evaluation pipeline
 ```
 
-Recommended current PGVector milestone:
+The retrieval evaluation milestone establishes a baseline before further
+retrieval or RAG quality changes.
 
-``` text
-feat: integrate pgvector semantic search and embeddings
-```
-
-## 34. Development Workflow
+## 54. Development Workflow
 
 ``` text
 Plan
@@ -1044,50 +1536,49 @@ Git commit
 Do not move to the next major subsystem while the current integration is
 unverified.
 
-## 35. Project Context Maintenance
+## 55. Project Context Maintenance
 
-`project-context.md` is the durable project-level source of context
-across conversations.
+`project-context.md` is the durable project-level source of context across
+conversations.
 
 It describes current truth, not a diary.
 
 When architecture changes:
 
-1.  Update the relevant section.
-2.  Remove obsolete descriptions.
-3.  Keep important architectural decisions.
-4.  Do not append contradictory historical states.
+1. Update the relevant section.
+2. Remove obsolete descriptions.
+3. Keep important architectural decisions.
+4. Do not append contradictory historical states.
 
-Do not store every debugging mistake, terminal command, temporary test
-data, abandoned implementation, full source code, or detailed lesson
-transcript.
+Do not store every debugging mistake, terminal command, temporary test data,
+abandoned implementation, full source code, or detailed lesson transcript.
 
 Git history preserves implementation history. Source code preserves
 implementation details.
 
-## 36. Source-of-Truth Hierarchy
+## 56. Source-of-Truth Hierarchy
 
 When information conflicts:
 
 ``` text
 Actual source code
-       +
+      +
 Database / migrations
-       +
+      +
 Git history
-       +
+      +
 project-context.md
-       +
+      +
 Current conversations
 ```
 
-If `project-context.md` conflicts with the actual implementation, verify
-the implementation and update the context file.
+If `project-context.md` conflicts with the actual implementation, verify the
+implementation and update the context file.
 
-## 37. Current Project State
+## 57. Current Project State
 
-The project now has a complete traditional backend foundation plus an
-initial AI retrieval layer:
+The project now has a complete traditional backend foundation, semantic
+retrieval, and an initial production-oriented RAG system:
 
 ``` text
 FastAPI
@@ -1110,48 +1601,63 @@ pgvector
 Ollama embeddings
 Embedding ingestion
 Semantic search
+RAG context assembly
+Prompt construction
+Local LLM generation
+Sources / citations
+Retrieval relevance controls
+Neighbor expansion
+Context budgeting
+Anchor-aware retrieval
+Anchor diversity
+Hybrid retrieval
+RRF
+Retrieval evaluation
 ```
 
-The next transition is from semantic retrieval to RAG.
+The project has now moved from:
 
-## 38. Immediate Next Direction
+``` text
+Semantic Retrieval
+```
 
-The next major phase is **RAG Context Assembly**.
+to:
 
-The system already retrieves relevant chunks:
+``` text
+Measured Hybrid Retrieval
+        ↓
+RAG Pipeline
+        ↓
+Evaluation Baseline
+```
+
+## 58. Immediate Next Direction
+
+The next major direction should build on the retrieval-evaluation baseline.
+
+The current system can already retrieve context and generate grounded
+answers. The next quality-oriented work can evaluate the **RAG result itself**
+rather than only retrieval:
 
 ``` text
 Question
    ↓
-Query Embedding
+Retrieval
    ↓
-pgvector
+Context
    ↓
-Relevant NoteChunks
+LLM Answer
+   ↓
+Answer Quality Evaluation
+   ├── Context Relevance
+   ├── Faithfulness
+   └── Citation Correctness
 ```
 
-Next:
+This should be approached incrementally and only after the current retrieval
+evaluation baseline is preserved.
 
-``` text
-User Question
-      ↓
-Semantic Retrieval
-      ↓
-Relevant Chunks
-      ↓
-Context Assembly
-      ↓
-LLM
-      ↓
-Grounded Answer
-      ↓
-Sources / Citations
-```
-
-The RAG system should be implemented incrementally rather than jumping
-directly into a complete chatbot.
-
-## 39. Core Project Principle
+## 59. Core Project Principle
 
 Build a real product, not a collection of tutorials.
 
@@ -1161,12 +1667,11 @@ Every technology should answer:
 
 The project should remain:
 
--   Understandable
--   Testable
--   Incrementally built
--   Secure
--   Maintainable
--   Production-oriented
--   Strong enough to demonstrate real engineering ability
--   Capable of evolving into a real AI/RAG system
-
+- Understandable
+- Testable
+- Incrementally built
+- Secure
+- Maintainable
+- Production-oriented
+- Strong enough to demonstrate real engineering ability
+- Capable of evolving into a real AI/RAG system
