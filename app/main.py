@@ -35,7 +35,6 @@ def database_health(db : Session = Depends(get_db)):
         "database": "connected"
     }
 
-
 @app.exception_handler(UserNotFoundError)
 async def user_not_found_handler(request : Request , exc : UserNotFoundError):
     return JSONResponse(status_code=404 

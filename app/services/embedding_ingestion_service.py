@@ -3,6 +3,7 @@ from app.models.note_chunk import NoteChunk
 from app.services.chunking_service import ChunkingService
 from app.services.embedding_service import EmbeddingService
 from app.repositories.note_repository import NoteRepository
+from app.services.contextualization_service import ContextualizationService
 
 
 class EmbeddingIngestionService:
@@ -10,6 +11,7 @@ class EmbeddingIngestionService:
     def __init__(self , db : Session):
         self.chunking_service = ChunkingService()
         self.embedding_service = EmbeddingService()
+        self.contextualization_service = ContextualizationService()
         self.note_repository = NoteRepository(db)
 
     def process_note(self , note_id : int , content : str) -> list[NoteChunk]:
@@ -24,9 +26,13 @@ class EmbeddingIngestionService:
         note_chunks = []
 
         for index , chunk_text in enumerate(chunks):
-            embedding = self.embedding_service.create_embedding(chunk_text)
+            contextual_content = (
+                self.contextualization_service.contextualize(note_content=content , chunk_content=chunk_text)
+            )
 
-            note_chunk = NoteChunk(note_id = note_id , content = chunk_text , chunk_index = index , embedding = embedding)
+            embedding = self.embedding_service.create_embedding(contextual_content)
+
+            note_chunk = NoteChunk(note_id = note_id , content = chunk_text , contextual_content = contextual_content , chunk_index = index , embedding = embedding)
 
             note_chunks.append(note_chunk)
 

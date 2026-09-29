@@ -3,6 +3,7 @@ from app.models.note import Note
 from sqlalchemy import func , select
 from app.models.note_chunk import NoteChunk
 from sqlalchemy import delete
+import math
 
 
 class NoteRepository:
@@ -147,6 +148,57 @@ class NoteRepository:
          return list(
               self.db.execute(statement).all()
          )
+
+    def get_note_chunks(self , user_id : int) -> list[NoteChunk]:
+         statement = (
+              select(NoteChunk)
+              .join(Note , Note.id == NoteChunk.note_id)
+              .where(Note.user_id == user_id)
+              .order_by(NoteChunk.note_id , NoteChunk.chunk_index)
+         )
+
+         return list(self.db.execute(statement).scalars().all())
+
+    def semantic_search_with_raw_content_embedding(self , user_id : int , note_chunks : list[NoteChunk] , content_embeddings : list[list[float]] , query_embedding : list[float] , limit : int = 5) -> list[tuple[NoteChunk , float]]:
+             results = []
+    
+             for chunk, content_embedding in zip(note_chunks, content_embeddings):
+               distance = self.cosine_distance(
+                 query_embedding,
+                 content_embedding,
+               )
+    
+               results.append((chunk, distance))
+    
+             results.sort(key=lambda item: item[1])
+    
+             return results[:limit]
+
+    def cosine_distance(self, vector_a: list[float],vector_b: list[float],) -> float:
+
+     dot_product = sum(
+        a * b
+        for a, b in zip(vector_a, vector_b)
+    )
+ 
+     magnitude_a = math.sqrt(
+        sum(a * a for a in vector_a)
+    )
+
+     magnitude_b = math.sqrt(
+        sum(b * b for b in vector_b)
+    )
+
+     if magnitude_a == 0 or magnitude_b == 0:
+        raise ValueError("Cannot calculate cosine distance for a zero vector.")
+
+     cosine_similarity = (
+        dot_product / (magnitude_a * magnitude_b)
+    )
+
+     return 1.0 - cosine_similarity
+          
+    
 
 
         
