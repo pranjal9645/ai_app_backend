@@ -98,36 +98,15 @@ class RagService:
     
 
     def generate_answer(self , user_id : int , query : str , top_k : int = 5) -> RAGResult:
-        chunks = self.hybrid_retrieve(user_id=user_id , query=query , top_k=top_k)
-        chunks = self.select_hybrid_results(chunks=chunks)
-
+        
+        chunks = self._prepare_rag_chunks(user_id=user_id , query=query,top_k=top_k)
         if not chunks:
             return RAGResult(
                 answer="I couldn't find relevant information in your notes.",
                 sources=[]
             )
-        
-        chunks = self.limit_anchor_diversity(chunks=chunks)
-
-        if not chunks:
-            return RAGResult(
-        answer="I couldn't find enough relevant information to answer this question.",
-        sources=[],
-    )
-        chunks = self.expand_with_neighbors(user_id=user_id , chunks=chunks)
-
-        chunks = self.apply_context_budget(chunks=chunks)
-
-        if not chunks:
-            return RAGResult(
-                answer="I couldn't find enough relevant information to answer this question.",
-                sources=[]
-            )
-
-        
 
         prompt = self.build_prompt_from_chunks(query=query , chunks=chunks)
-
         answer = self.llm_service.generate(system_prompt=prompt.system_prompt , user_prompt=prompt.user_prompt)
 
         return RAGResult(
@@ -322,34 +301,13 @@ class RagService:
     def generate_conversational_answer(self , user_id : int , conversation_context : ConversationContext , top_k : int = 5) -> RAGResult:
         rewritten_query = self.query_rewriting_service.rewrite(context=conversation_context)
 
-        chunks = self.hybrid_retrieve(user_id=user_id, query=rewritten_query.query , top_k=top_k)
-
-        chunks = self.select_hybrid_results(chunks=chunks)
+        chunks = self._prepare_rag_chunks(user_id=user_id , query=rewritten_query.query , top_k=top_k)
 
         if not chunks:
              return RAGResult(
             answer="I couldn't find relevant information in your notes.",
             sources=[],
         )
-
-        chunks = self.limit_anchor_diversity(chunks=chunks)
-
-        if not chunks:
-              return RAGResult(
-            answer="I couldn't find enough relevant information to answer this question.",
-            sources=[],
-        )
-
-        chunks = self.expand_with_neighbors(user_id=user_id , chunks=chunks)
-
-        chunks = self.apply_context_budget(chunks=chunks)
-
-        if not chunks:
-            return RAGResult(
-            answer="I couldn't find enough relevant information to answer this question.",
-            sources=[],
-        )
-
         context = self.context_assembly_service.assemble(chunks=chunks)
 
         prompt = self.prompt_construction_service.build_conversational(question=conversation_context.current_message , context=context , conversation_history=conversation_context.history)
@@ -362,6 +320,29 @@ class RagService:
             answer=answer,
             sources=chunks
         )
+
+
+    def _prepare_rag_chunks(self , user_id : int , query : str , top_k : int = 5) -> list[RetrievedChunk] | None:
+        chunks = self.hybrid_retrieve(user_id=user_id , query=query , top_k=top_k)
+
+        chunks = self.select_hybrid_results(chunks=chunks)
+
+        if not chunks:
+            return None
+
+        chunks = self.limit_anchor_diversity(chunks=chunks)
+
+        if not chunks:
+            return None
+
+        chunks = self.expand_with_neighbors(user_id=user_id,chunks=chunks)
+
+        chunks = self.apply_context_budget(chunks=chunks)
+
+        if not chunks:
+            return None
+
+        return chunks
 
 
     
