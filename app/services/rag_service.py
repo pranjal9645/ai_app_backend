@@ -7,6 +7,8 @@ from app.services.prompt_construction_service import PromptConstructionService
 from app.schemas.rag import RAGPrompt , RAGResult
 from app.services.llm_service import LLMService
 from app.core.config import settings
+from app.schemas.conversation import ConversationContext
+from app.services.query_rewriting_service import QueryRewritingService
 
 class RagService:
 
@@ -17,6 +19,7 @@ class RagService:
         self.context_assembly_service = ContextAssemblyService()
         self.prompt_construction_service = PromptConstructionService()
         self.llm_service = LLMService()
+        self.query_rewriting_service = QueryRewritingService()
 
 
     def build_context(self , user_id : int , query : str , top_k : int = 5) -> str:
@@ -315,6 +318,50 @@ class RagService:
         prompt = self.prompt_construction_service.build(question=query , context=context)
 
         return self.llm_service.generate(system_prompt=prompt.system_prompt , user_prompt=prompt.user_prompt)
+
+    def generate_conversational_answer(self , user_id : int , conversation_context : ConversationContext , top_k : int = 5) -> RAGResult:
+        rewritten_query = self.query_rewriting_service.rewrite(context=conversation_context)
+
+        chunks = self.hybrid_retrieve(user_id=user_id, query=rewritten_query.query , top_k=top_k)
+
+        chunks = self.select_hybrid_results(chunks=chunks)
+
+        if not chunks:
+             return RAGResult(
+            answer="I couldn't find relevant information in your notes.",
+            sources=[],
+        )
+
+        chunks = self.limit_anchor_diversity(chunks=chunks)
+
+        if not chunks:
+              return RAGResult(
+            answer="I couldn't find enough relevant information to answer this question.",
+            sources=[],
+        )
+
+        chunks = self.expand_with_neighbors(user_id=user_id , chunks=chunks)
+
+        chunks = self.apply_context_budget(chunks=chunks)
+
+        if not chunks:
+            return RAGResult(
+            answer="I couldn't find enough relevant information to answer this question.",
+            sources=[],
+        )
+
+        context = self.context_assembly_service.assemble(chunks=chunks)
+
+        prompt = self.prompt_construction_service.build_conversational(question=conversation_context.current_message , context=context , conversation_history=conversation_context.history)
+
+        answer = self.llm_service.generate(
+           system_prompt=prompt.system_prompt , user_prompt=prompt.user_prompt
+        )
+
+        return RAGResult(
+            answer=answer,
+            sources=chunks
+        )
 
 
     

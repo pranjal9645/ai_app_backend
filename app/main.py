@@ -8,10 +8,11 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
-    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError
+    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError , ConversationNotFoundError , MessageNotFoundError , AppException
 )
 from app.api.routes.auth import router as auth_router
 from app.api.routes.rag import router as rag_router
+from app.api.routes.conversations import router as conversation_router
 
 app = FastAPI(title = settings.app_name , version = settings.app_version)
 
@@ -19,6 +20,7 @@ app.include_router(users_router)
 app.include_router(notes_router)
 app.include_router(auth_router)
 app.include_router(rag_router)
+app.include_router(conversation_router)
 
 @app.get("/")
 def root():
@@ -35,46 +37,23 @@ def database_health(db : Session = Depends(get_db)):
         "database": "connected"
     }
 
-@app.exception_handler(UserNotFoundError)
-async def user_not_found_handler(request : Request , exc : UserNotFoundError):
-    return JSONResponse(status_code=404 
-                        , content= {
-                            "error" : {
-                                        "code" : exc.code,
-                                        "message" : str(exc)
-                          }
-                        }
-                    )
+@app.exception_handler(AppException)
+async def app_exception_handler(request : Request , exc : AppException):
+    status_code = 400
 
-@app.exception_handler(UserAlreadyExistsError)
-async def user_already_exists_handler(request : Request , exc : UserAlreadyExistsError):
-    return JSONResponse(status_code=409 , content={
-         "error" : {
-             "code" : exc.code,
-             "message" : str(exc)
-         }
-    }
- )
-
-@app.exception_handler(NoteNotFoundError)
-async def note_not_found_handler(request : Request , exc : NoteNotFoundError):
+    if isinstance(exc , (UserNotFoundError , ConversationNotFoundError , MessageNotFoundError , NoteNotFoundError)):
+        status_code = 404
+    elif  isinstance(exc , UserAlreadyExistsError):
+        status_code = 409
+    elif isinstance(exc , AuthenticationError):
+        status_code = 401
 
     return JSONResponse(
-        status_code=404 , content={
-            "error" : {
+        status_code=status_code , 
+        content={
+            "error" :{
                 "code" : exc.code,
                 "message" : str(exc)
             }
-        }
-    )
-
-@app.exception_handler(AuthenticationError)
-async def authentication_exception_handler(request : Request , exc  : AuthenticationError):
-    return JSONResponse(
-        status_code=401 , content={
-            "error" : {
-                        "code" : exc.code,
-                        "message" : str(exc)
-                    }
         }
     )

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     rag_max_context_chars:int = 12000
     rag_max_anchors_per_note : int = 2
     rag_hybrid_top_k : int = 5
+    rag_conversation_history_limit : int = 10
+    rag_conversation_relevant_message_limit: int = 5
 
     
     model_config = SettingsConfigDict(env_file=ENV_FILE_PATH , env_file_encoding="utf-8" , case_sensitive=False)
