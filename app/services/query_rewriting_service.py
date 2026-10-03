@@ -59,15 +59,16 @@ Rules:
 
 Examples:
 
-Conversation:
+Previous Conversation between Assistant and User is Like:
+
 User: What is pgvector?
 Assistant: pgvector is an extension for PostgreSQL that provides
 vector storage and similarity search.
 
-Current message:
+and now user's Current message is Like:
 What are embeddings?
 
-Output:
+so Output should be:
 What are embeddings?
 
 Conversation:

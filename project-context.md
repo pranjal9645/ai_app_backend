@@ -225,6 +225,13 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 REDIS_URL
 OLLAMA_HOST
 EMBEDDING_MODEL
+LLM_MODEL
+RAG_MAX_DISTANCE
+RAG_MAX_CONTEXT_CHARS
+RAG_MAX_ANCHORS_PER_NOTE
+RAG_HYBRID_TOP_K
+RAG_CONVERSATION_HISTORY_LIMIT
+RAG_CONVERSATION_RELEVANT_MESSAGE_LIMIT
 ```
 
 Embedding configuration:
@@ -298,6 +305,7 @@ NoteChunk
 ├── id
 ├── note_id
 ├── content
+├── contextual_content
 ├── chunk_index
 ├── embedding
 └── created_at
@@ -857,9 +865,17 @@ Neighbor Chunk Expansion        ✓
 Context Budgeting               ✓
 Anchor-Aware Retrieval          ✓
 Anchor Diversity                ✓
-Hybrid Semantic + Lexical      ✓
+Hybrid Semantic + Lexical       ✓
 RRF Score Fusion                ✓
 Retrieval Evaluation            ✓
+RAG Answer-Quality Evaluation   ✓
+Contextual Retrieval            ✓
+Conversation Persistence        ✓
+Conversation-Aware Query Rewrite ✓
+Conversation-Aware Retrieval    ✓
+Conversational Prompting       ✓
+Semantic Older-Message Retrieval ✓
+End-to-End Conversational RAG  ✓
 ```
 
 The AI layer is now beyond basic semantic search and has an initial
@@ -1316,17 +1332,20 @@ Anchor diversity                       ✓
 Hybrid semantic + lexical retrieval   ✓
 RRF score fusion                       ✓
 Retrieval evaluation                   ✓
-```
-
-Still to come:
-
-``` text
-More robust evaluation dataset
-Advanced retrieval evaluation
-RAG answer-quality evaluation
-Faithfulness / citation correctness
-RAG production hardening
-AI assistant UX
+RAG answer-quality evaluation         ✓
+Contextual retrieval                   ✓
+Conversation persistence                ✓
+Conversation history                   ✓
+Conversation-aware query representation ✓
+Query rewriting                        ✓
+Conversation-aware retrieval            ✓
+Conversation-aware prompting            ✓
+Semantic older-message retrieval       ✓
+End-to-end conversational RAG          ✓
+AI Knowledge Assistant                  ✓
+Assistant API contract                  ✓
+Assistant-specific error handling      ✓
+End-to-end Assistant API testing       ✓
 ```
 
 ## 49. Current Roadmap
@@ -1368,9 +1387,15 @@ Retrieval Quality / Hybrid Search
        ↓
 Retrieval Evaluation
        ↓
-RAG Quality Evaluation
+RAG Answer-Quality Evaluation
        ↓
-AI Knowledge Assistant
+Contextual Retrieval
+       ↓
+Conversation Persistence
+       ↓
+Conversational RAG
+       ↓
+AI Knowledge Assistant ✓
        ↓
 iOS Integration / AI Features
        ↓
@@ -1409,14 +1434,14 @@ introduced only when evaluation shows they are needed.
 
 ### Evaluation
 
-The current retrieval dataset contains only five test cases. It should grow
-as the knowledge base and retrieval requirements grow. Do not optimize against
-five queries alone.
+The current retrieval dataset contains five representative test cases and
+should grow as the knowledge base and retrieval requirements grow. Do not
+optimize against five queries alone.
 
-### RAG Quality
-
-Answer faithfulness, context relevance, citation correctness, and other
-answer-level evaluation are not yet implemented.
+RAG answer-quality evaluation is now implemented for the current evaluation
+dataset. It measures context relevance, answer faithfulness, and citation
+correctness. The current evaluation remains a development baseline rather
+than a broad benchmark.
 
 ## 51. Specialized Chat Strategy
 
@@ -1510,6 +1535,12 @@ Build initial RAG pipeline
 Add retrieval relevance controls
 Add hybrid retrieval with RRF
 Add retrieval evaluation pipeline
+Add RAG answer-quality evaluation
+Add contextual retrieval
+Add conversation persistence and APIs
+Add conversational RAG
+Add semantic retrieval of older conversation messages
+Add AI Knowledge Assistant
 ```
 
 The retrieval evaluation milestone establishes a baseline before further
@@ -1577,8 +1608,9 @@ implementation and update the context file.
 
 ## 57. Current Project State
 
-The project now has a complete traditional backend foundation, semantic
-retrieval, and an initial production-oriented RAG system:
+The project now has a complete traditional backend foundation, measured hybrid
+retrieval, contextual retrieval, answer-quality evaluation, a complete
+Conversational RAG pipeline, and a product-facing AI Knowledge Assistant:
 
 ``` text
 FastAPI
@@ -1613,51 +1645,650 @@ Anchor diversity
 Hybrid retrieval
 RRF
 Retrieval evaluation
+RAG answer-quality evaluation
+Contextual retrieval
+Conversation persistence
+Conversation APIs
+Conversation history
+Conversation-aware query rewriting
+Conversation-aware retrieval
+Conversation-aware prompting
+Semantic older-message retrieval
+End-to-end Conversational RAG
+AI Knowledge Assistant
+Assistant API contract and `/assistant/chat`
+Assistant-specific error handling
+End-to-end Assistant API validation
 ```
 
-The project has now moved from:
+The project has moved from:
 
 ``` text
 Semantic Retrieval
-```
-
-to:
-
-``` text
+        ↓
 Measured Hybrid Retrieval
         ↓
 RAG Pipeline
         ↓
-Evaluation Baseline
+Evaluated RAG
+        ↓
+Contextual Retrieval
+        ↓
+Conversational RAG
+        ↓
+AI Knowledge Assistant
 ```
 
 ## 58. Immediate Next Direction
 
-The next major direction should build on the retrieval-evaluation baseline.
+The AI Knowledge Assistant milestone is now complete and has been validated
+through the public `/assistant/chat` API.
 
-The current system can already retrieve context and generate grounded
-answers. The next quality-oriented work can evaluate the **RAG result itself**
-rather than only retrieval:
+The next major direction is iOS/UIKit integration, followed by broader
+automated testing and production hardening.
+
+Potential next areas include:
+
+``` text
+AI Knowledge Assistant
+       ↓
+iOS/UIKit integration
+       ↓
+Broader automated testing
+       ↓
+Production hardening
+       ↓
+Docker
+       ↓
+Deployment
+```
+
+Retrieval, RAG, and conversation behavior should continue to be evaluated as
+the system grows. Existing evaluation baselines should be preserved rather
+than optimized away.
+
+## 59. Contextual Retrieval
+
+Contextual retrieval was added so each chunk has both its original content
+and retrieval-oriented contextual content:
+
+``` text
+NoteChunk
+├── content              # exact original chunk
+└── contextual_content   # retrieval-oriented representation
+```
+
+The important separation is:
+
+``` text
+Original chunk content
+        ↓
+source / context shown to LLM
+
+Contextual content
+        ↓
+embedding generation / semantic retrieval
+```
+
+`ContextualizationService` uses the local LLM to generate a concise contextual
+description from the full note and the individual chunk. The contextualized
+representation is stored together with the original chunk.
+
+Current ingestion flow:
+
+``` text
+Note
+ ↓
+Chunking
+ ↓
+Contextualization
+ ↓
+contextual_content
+ ↓
+Embedding
+ ↓
+NoteChunk
+```
+
+The current implementation makes one LLM contextualization call per chunk.
+Batching, background processing, retries, and timeout hardening remain deferred.
+
+Existing test data was deleted before introducing the new contextual retrieval
+schema, so no embedding backfill was required.
+
+## 60. RAG Answer-Quality Evaluation
+
+RAG evaluation now extends beyond retrieval quality:
 
 ``` text
 Question
-   ↓
+  ↓
 Retrieval
-   ↓
+  ↓
 Context
-   ↓
+  ↓
 LLM Answer
-   ↓
+  ↓
 Answer Quality Evaluation
-   ├── Context Relevance
-   ├── Faithfulness
-   └── Citation Correctness
+  ├── Context Relevance
+  ├── Faithfulness
+  └── Citation Correctness
 ```
 
-This should be approached incrementally and only after the current retrieval
-evaluation baseline is preserved.
+The current evaluation dataset contains five project-specific test cases and
+fifteen expected facts.
 
-## 59. Core Project Principle
+Current development baseline:
+
+``` text
+Test cases:                    5
+Expected facts:                15
+Supported facts:               15
+Unsupported facts:              0
+Average context relevance:   1.00
+Faithful answers:               5 / 5
+Unfaithful answers:             0 / 5
+Citation-correct answers:      4 / 5
+Citation-incorrect answers:     1 / 5
+```
+
+The evaluation uses dedicated LLM judges with strict outputs for supported
+facts, faithfulness, and citation correctness.
+
+Citation correctness currently evaluates whether the cited/source material
+supports the answer. Explicit citation-marker placement is not yet the focus.
+
+The dataset is intentionally small and is a development baseline, not a broad
+benchmark.
+
+## 61. Conversation Architecture
+
+Conversational RAG extends the single-turn pipeline:
+
+``` text
+Single-turn:
+User Question
+      ↓
+Retrieval
+      ↓
+Context
+      ↓
+LLM
+      ↓
+Answer
+```
+
+into:
+
+``` text
+Conversation
+      ↓
+Conversation History
+      ↓
+Query Understanding / Rewriting
+      ↓
+Hybrid Note Retrieval
+      ↓
+Context Assembly
+      ↓
+Conversation-Aware Prompt
+      ↓
+LLM
+      ↓
+Answer
+```
+
+Core architectural distinction:
+
+- Conversation history helps understand user intent, references, and pronouns.
+- User note retrieval remains the authoritative knowledge source.
+- Previous assistant answers are not treated as authoritative knowledge.
+- Conversation history must not be inserted directly into note retrieval.
+- Retrieval remains scoped to the authenticated user's notes.
+
+## 62. Conversation Persistence
+
+Two new models were introduced:
+
+``` text
+Conversation
+├── id
+├── user_id
+├── title
+├── created_at
+└── updated_at
+```
+
+``` text
+ConversationMessage
+├── id
+├── conversation_id
+├── role
+├── content
+├── embedding
+└── created_at
+```
+
+`ConversationMessage.embedding` uses:
+
+``` text
+vector(768)
+```
+
+and is non-nullable because existing test conversation data was deleted before
+the embedding migration. No backfill mechanism is required for the current
+database state.
+
+Conversation messages are persisted in PostgreSQL.
+
+Conversation ownership is enforced through the authenticated user's ID. Client
+input must never be trusted to identify the owner.
+
+## 63. Conversation APIs
+
+Current conversation lifecycle API:
+
+``` text
+POST   /conversations
+GET    /conversations
+GET    /conversations/{conversation_id}/messages
+POST   /conversations/{conversation_id}/messages
+DELETE /conversations/{conversation_id}/messages/{message_id}
+DELETE /conversations/{conversation_id}
+```
+
+Conversation and message not-found cases use stable API error codes:
+
+``` text
+CONVERSATION_NOT_FOUND
+MESSAGE_NOT_FOUND
+```
+
+All conversation APIs have been end-to-end tested.
+
+## 64. Conversation Context
+
+`ConversationContext` is the application-level representation used while
+processing a conversational request:
+
+``` text
+ConversationContext
+├── history
+└── current_message
+```
+
+Each history turn contains:
+
+``` text
+role: user | assistant
+content
+```
+
+The current user message remains separate from prior history.
+
+Persistent database messages and `ConversationContext` are intentionally
+different concepts:
+
+``` text
+PostgreSQL messages
+        ↓
+bounded / selected history
+        ↓
+ConversationContext
+```
+
+## 65. Query Rewriting
+
+Conversational RAG uses a dedicated `QueryRewritingService`.
+
+The rewriting stage converts a conversational message into a standalone
+retrieval query when necessary.
+
+The important rule is:
+
+``` text
+Current message = primary source of intent
+Conversation history = context for resolving ambiguity
+```
+
+A self-contained question should remain self-contained.
+
+For example:
+
+``` text
+Conversation:
+User: What is pgvector?
+
+Current:
+What are embeddings?
+
+Rewritten query:
+What are embeddings?
+```
+
+Previous topics must not be injected into an already clear question merely
+because the topics are related.
+
+For genuinely context-dependent messages:
+
+``` text
+User: What is pgvector?
+Current: How does it store vectors?
+
+Rewritten:
+How does pgvector store vectors?
+```
+
+The rewriting model must:
+
+- preserve current-message intent
+- resolve genuine pronouns and references
+- use only necessary conversation context
+- avoid broadening or redirecting the query
+- preserve user terminology where possible
+- never answer the question
+- return only the final standalone retrieval query
+
+## 66. Conversational Retrieval
+
+Conversational RAG uses the rewritten query for note retrieval:
+
+``` text
+ConversationContext
+       ↓
+QueryRewritingService
+       ↓
+Rewritten Query
+       ↓
+Hybrid Note Retrieval
+       ↓
+RRF
+       ↓
+Anchor Diversity
+       ↓
+Neighbor Expansion
+       ↓
+Context Budget
+       ↓
+Retrieved NoteChunks
+```
+
+The original current message is used later for the final conversational prompt.
+
+This creates an intentional separation:
+
+``` text
+Rewritten query
+    → retrieval
+
+Original current message
+    → final user-facing answer prompt
+
+Conversation history
+    → understanding + final prompt only
+```
+
+Raw conversation history is never concatenated into the note retrieval query.
+
+Conversation messages are never represented as `RetrievedChunk` objects.
+
+## 67. Semantic Retrieval of Older Conversation Messages
+
+Conversation context uses both guaranteed recent messages and semantically relevant
+older messages.
+
+Current flow:
+
+``` text
+Current user question
+        ↓
+Recent conversation messages
+        +
+Semantic search over older conversation messages
+        ↓
+Deduplicate by message ID
+        ↓
+Chronological ordering
+        ↓
+ConversationContext
+```
+
+Configuration:
+
+``` env
+RAG_CONVERSATION_HISTORY_LIMIT=10
+RAG_CONVERSATION_RELEVANT_MESSAGE_LIMIT=5
+```
+
+Recent messages are always included within the configured history window.
+
+The current message is embedded and used to search older messages belonging only
+to the same conversation. Recent message IDs are excluded from the semantic
+older-message search to prevent duplication.
+
+Every newly stored user and assistant conversation message receives a 768
+dimensional embedding.
+
+The architecture keeps embedding generation in `EmbeddingService`; database
+retrieval remains in `ConversationRepository`; transaction and orchestration
+remain in `ConversationService`.
+
+Conversation-message semantic retrieval is used to recover older conversational
+context. It is not treated as authoritative knowledge for factual answers.
+
+## 68. Conversational Prompting
+
+The final conversational prompt contains:
+
+``` text
+Conversation history
++
+Retrieved note context
++
+Original current user question
+```
+
+The prompt explicitly distinguishes the roles of these inputs:
+
+``` text
+Conversation history
+    → helps understand references and conversational context
+
+Retrieved note context
+    → only authoritative source for factual answers
+
+Previous assistant answers
+    → not authoritative unless supported by retrieved note context
+```
+
+The conversational system prompt enforces strict grounding:
+
+- Retrieved note context is the only authoritative knowledge source.
+- Conversation history is used only for references, pronouns, and continuity.
+- Previous assistant answers are not factual evidence.
+- The model must not use pretrained/general knowledge to fill missing information.
+- If retrieved context is insufficient, the model must not infer, speculate, or complete unsupported facts.
+- The model must answer only what the retrieved context supports.
+- When the information is unavailable, the required fallback is: `I couldn't find that information in your notes.`
+
+The single-turn `SYSTEM_PROMPT` follows the same grounding contract without
+conversation-history rules.
+
+Application-level retrieval guards remain separate from prompt grounding. If
+no usable chunks survive the RAG preparation pipeline, the application returns
+the grounded fallback without invoking the LLM. Prompt grounding therefore
+acts as a second safety layer for cases where context exists but does not fully
+support the requested answer.
+
+## 69. Shared RAG Generation Pipeline
+
+`generate_answer()` and `generate_conversational_answer()` use the same private
+retrieval/context preparation stage:
+
+``` text
+_prepare_rag_chunks()
+    ↓
+hybrid_retrieve()
+    ↓
+select_hybrid_results()
+    ↓
+limit_anchor_diversity()
+    ↓
+expand_with_neighbors()
+    ↓
+apply_context_budget()
+```
+
+Normal RAG then uses:
+
+``` text
+_prepare_rag_chunks()
+    ↓
+normal RAG prompt
+    ↓
+LLM
+```
+
+Conversational RAG uses:
+
+``` text
+query rewriting
+    ↓
+_prepare_rag_chunks()
+    ↓
+conversation-aware prompt
+    ↓
+LLM
+```
+
+This keeps shared retrieval behavior in one place while preserving different
+final prompts. The retrieval pipeline itself remains conversation-agnostic.
+
+## 70. AI Knowledge Assistant
+
+The AI Knowledge Assistant is the product-facing orchestration layer built on
+top of the existing Conversational RAG system. It does not replace RAG and
+does not duplicate retrieval logic.
+
+Architecture:
+
+``` text
+iOS / Client
+      ↓
+POST /assistant/chat
+      ↓
+AssistantRoute
+      ↓
+AssistantService
+      ↓
+ConversationService
+      ↓
+RAGService
+      ↓
+AssistantResponse
+```
+
+Responsibilities:
+
+- `AssistantRoute` handles HTTP concerns and authentication dependency.
+- `AssistantService` is the thin product-level orchestration layer.
+- `ConversationService` owns conversation lifecycle, ownership, message history, persistence, and conversational RAG orchestration.
+- `RAGService` owns retrieval, context preparation, prompting, and answer generation.
+- `LLMService` owns communication with the local LLM provider.
+
+### Public Assistant API
+
+``` text
+POST /assistant/chat
+```
+
+Request:
+
+``` json
+{
+    "conversation_id": 12,
+    "message": "Why did we use Redis for note caching?"
+}
+```
+
+The client does not send `user_id`. The authenticated user identity comes from
+the JWT. The requested conversation must already exist and belong to that user.
+
+Response:
+
+``` json
+{
+    "conversation_id": 12,
+    "message_id": 47,
+    "answer": "...",
+    "sources": [
+        {
+            "note_id": 8,
+            "chunk_id": 21,
+            "chunk_index": 2,
+            "content": "..."
+        }
+    ]
+}
+```
+
+The public response intentionally hides internal retrieval metadata such as
+cosine distance, RRF/hybrid score, anchor status, and retrieval source type.
+The iOS client receives product-level source information rather than being
+coupled to RAG implementation details.
+
+### Assistant Error Handling
+
+Assistant-specific infrastructure failure uses:
+
+``` text
+AIServiceUnavailableError
+        ↓
+AI_SERVICE_UNAVAILABLE
+```
+
+`LLMService` translates expected Ollama/API connection failures into this
+application exception. Unexpected programming errors are not caught and
+misclassified as AI-service failures. Existing authentication, conversation,
+message, validation, and ownership error contracts remain unchanged.
+
+### Grounding Contract
+
+The Assistant uses two grounding layers:
+
+``` text
+Application retrieval guard
+        ↓
+No usable chunks → grounded fallback, no LLM call
+
+Prompt grounding
+        ↓
+Context exists → LLM may answer only from supported retrieved evidence
+```
+
+This prevents empty retrieval from reaching generation and reduces hallucination
+when retrieved context is present but incomplete.
+
+### End-to-End Validation
+
+The public Assistant API has been tested for:
+
+- successful single-turn assistant requests
+- conversational follow-up questions
+- blank-message validation
+- missing authentication
+- non-existent conversations
+- cross-user conversation access
+- questions with no relevant knowledge
+- AI-service unavailability
+- persisted assistant messages
+- persisted user messages
+
+All planned Assistant API tests pass.
+
+## 71. Core Project Principle
+
+Build a real product, not a collection of tutorials.
 
 Build a real product, not a collection of tutorials.
 

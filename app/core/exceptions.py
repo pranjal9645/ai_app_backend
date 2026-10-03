@@ -18,3 +18,6 @@ class ConversationNotFoundError(AppException):
 
 class MessageNotFoundError(AppException):
      code  = "MESSAGE_NOT_FOUND"
+
+class AIServiceUnavailableError(AppException):
+     code = "AI_SERVICE_UNAVAILABLE"

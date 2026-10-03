@@ -120,7 +120,7 @@ class ConversationRepository:
                      .limit(limit)
                      )
 
-        return list(self.db.execute(statement).scalars().all())
+        return list(self.db.execute(statement).all())
 
 
     

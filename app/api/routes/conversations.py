@@ -48,7 +48,7 @@ def get_messages(conversation_id : int , current_user : User = Depends(get_curre
 def send_message(conversation_id : int , request : ConversationMessageRequest , current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):
     conversation_service = ConversationService(db=db)
 
-    result = conversation_service.send_message(user_id=current_user.id , conversation_id=conversation_id , content=request.message)
+    result = conversation_service.send_message(user_id=current_user.id , conversation_id=conversation_id , content=request.message).rag_result
 
     return ConversationChatResponse(
         conversation_id=conversation_id,

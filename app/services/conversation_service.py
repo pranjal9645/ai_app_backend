@@ -13,6 +13,7 @@ from app.core.exceptions import (
 )
 from app.core.config import settings
 from app.services.embedding_service import EmbeddingService
+from app.schemas.assistant import AssistantServiceResult
 
 class ConversationService:
     def __init__(self , db : Session):
@@ -96,9 +97,8 @@ class ConversationService:
             self.db.rollback()
             raise
 
-    def send_message(self , user_id : int , conversation_id : int , content : str) -> RAGResult:
+    def send_message(self , user_id : int , conversation_id : int , content : str) -> AssistantServiceResult:
 
-        conversation_message_limit = settings.rag_conversation_history_limit
         try:
              conversation = self.conversation_repository.get_conversation_by_id(
                 conversation_id=conversation_id,
@@ -124,7 +124,7 @@ class ConversationService:
 
              conversation_context = ConversationContext(
                 history=history,
-                current_message=content,
+                current_message=content
             )
 
              user_message_embedding = self.embedding_service.create_embedding(text=content)
@@ -140,7 +140,8 @@ class ConversationService:
 
              result = self.rag_service.generate_conversational_answer(
                 user_id=user_id,
-                conversation_context=conversation_context
+                conversation_context=conversation_context,
+                top_k=2
             )
 
              assistant_message_embedding = self.embedding_service.create_embedding(text=result.answer)
@@ -160,7 +161,10 @@ class ConversationService:
 
              self.db.commit()
 
-             return result
+             return AssistantServiceResult(
+                 message_id=assistant_message.id,
+                 rag_result=result
+             )
         except Exception:
             self.db.rollback()
             raise

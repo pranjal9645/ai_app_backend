@@ -8,11 +8,12 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
-    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError , ConversationNotFoundError , MessageNotFoundError , AppException
+    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError , ConversationNotFoundError , MessageNotFoundError , AppException , AIServiceUnavailableError
 )
 from app.api.routes.auth import router as auth_router
 from app.api.routes.rag import router as rag_router
 from app.api.routes.conversations import router as conversation_router
+from app.api.routes.assistant import router as assistant_router
 
 app = FastAPI(title = settings.app_name , version = settings.app_version)
 
@@ -21,6 +22,7 @@ app.include_router(notes_router)
 app.include_router(auth_router)
 app.include_router(rag_router)
 app.include_router(conversation_router)
+app.include_router(assistant_router)
 
 @app.get("/")
 def root():
@@ -47,6 +49,8 @@ async def app_exception_handler(request : Request , exc : AppException):
         status_code = 409
     elif isinstance(exc , AuthenticationError):
         status_code = 401
+    elif isinstance(exc , AIServiceUnavailableError):
+        status_code = 503
 
     return JSONResponse(
         status_code=status_code , 

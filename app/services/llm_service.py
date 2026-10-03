@@ -1,5 +1,6 @@
 import ollama
 from app.core.config import settings
+from app.core.exceptions import AIServiceUnavailableError
 
 class LLMService:
 
@@ -7,7 +8,8 @@ class LLMService:
         self.model = settings.llm_model
 
     def generate(self , system_prompt : str , user_prompt : str) -> str:
-        response = ollama.chat(model=self.model , messages=[
+        try:
+            response = ollama.chat(model=self.model , messages=[
                 {
                     "role": "system",
                     "content": system_prompt,
@@ -18,4 +20,7 @@ class LLMService:
                 },
         ])
 
-        return response["message"]["content"]
+            return response["message"]["content"]
+
+        except (ollama.ResponseError , ConnectionError) as exc:
+                raise AIServiceUnavailableError("AI service is currently unavailable") from exc       
