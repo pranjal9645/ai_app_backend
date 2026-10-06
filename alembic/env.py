@@ -11,6 +11,8 @@ from app.models.note import Note
 from app.models.note_chunk import NoteChunk
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
+from app.models.refresh_token import RefreshToken
+from app.models.password_reset_token import PasswordResetToken
 
 
 # this is the Alembic Config object, which provides

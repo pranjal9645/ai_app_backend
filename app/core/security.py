@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from pwdlib import PasswordHash
 from datetime import datetime , timedelta , timezone
 import jwt
@@ -57,5 +59,27 @@ def get_current_user(token : str = Depends(oauth2_scheme) , db : Session = Depen
 
     return user
 
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(64)
+
+def hash_refresh_token(token : set) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+def get_refresh_token_expiration() -> datetime:
+
+    return datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_token_expire_days)
+
+def create_password_reset_token() -> str:
+    return secrets.token_urlsafe(64)
+
+def hash_password_reset_token(token: str) -> str:
+    return hashlib.sha256(
+        token.encode()
+    ).hexdigest()
+
+def get_password_reset_token_expiration() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(
+        minutes=settings.password_reset_token_expire_minutes
+    )
 
     

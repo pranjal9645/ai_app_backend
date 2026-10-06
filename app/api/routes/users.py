@@ -2,6 +2,7 @@ from fastapi import APIRouter , Depends , Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate , UserResponse , UserUpdate
+from app.schemas.auth import RegisterResponse
 from app.services.user_service import UserService
 from app.models.user import User
 from app.core.security import get_current_user
@@ -9,7 +10,7 @@ from app.core.security import get_current_user
 
 router = APIRouter(prefix="/users" , tags=["Users"])
 
-@router.post("/" , response_model=UserResponse)
+@router.post("/" , response_model=RegisterResponse)
 def create_user(user_data : UserCreate , db : Session = Depends(get_db)):
     service = UserService(db)
 
