@@ -558,6 +558,8 @@ USER_ALREADY_EXISTS
 USER_NOT_FOUND
 NOTE_NOT_FOUND
 AUTHENTICATION_FAILED
+RATE_LIMIT_EXCEEDED
+RATE_LIMIT_SERVICE_UNAVAILABLE
 ```
 
 The iOS client should rely on `code`, not exact English `message`.
@@ -1346,6 +1348,10 @@ AI Knowledge Assistant                  ✓
 Assistant API contract                  ✓
 Assistant-specific error handling      ✓
 End-to-end Assistant API testing       ✓
+Redis-backed API rate limiting          ✓
+Per-user and per-IP AI limits           ✓
+Rate-limit error contract               ✓
+Rate-limiter automated tests            ✓
 ```
 
 ## 49. Current Roadmap
@@ -1400,6 +1406,7 @@ AI Knowledge Assistant ✓
 iOS Integration / AI Features
        ↓
 Testing / Hardening
+  └── Redis rate limiting ✓
        ↓
 Docker
        ↓
@@ -1541,6 +1548,9 @@ Add conversation persistence and APIs
 Add conversational RAG
 Add semantic retrieval of older conversation messages
 Add AI Knowledge Assistant
+Add Redis-backed API rate limiting
+Standardize rate-limit error responses
+Add rate-limiter automated tests
 ```
 
 The retrieval evaluation milestone establishes a baseline before further
@@ -1659,6 +1669,11 @@ AI Knowledge Assistant
 Assistant API contract and `/assistant/chat`
 Assistant-specific error handling
 End-to-end Assistant API validation
+Redis-backed fixed-window rate limiting
+IP-based authentication endpoint limits
+Per-user and per-IP limits for expensive AI endpoints
+Standardized rate-limit errors and Retry-After header
+Automated rate-limiter tests
 ```
 
 The project has moved from:
@@ -1681,11 +1696,13 @@ AI Knowledge Assistant
 
 ## 58. Immediate Next Direction
 
-The AI Knowledge Assistant milestone is now complete and has been validated
-through the public `/assistant/chat` API.
+The AI Knowledge Assistant milestone is complete and has been validated
+through the public `/assistant/chat` API. Redis-backed API rate limiting is
+also implemented and covered by automated tests.
 
-The next major direction is iOS/UIKit integration, followed by broader
-automated testing and production hardening.
+The next major direction is iOS/UIKit integration, alongside continued
+production hardening. Rate limiting is an initial protection layer, not a
+complete deployment security review.
 
 Potential next areas include:
 
@@ -1696,7 +1713,7 @@ iOS/UIKit integration
        ↓
 Broader automated testing
        ↓
-Production hardening
+Remaining production hardening
        ↓
 Docker
        ↓
@@ -2286,9 +2303,72 @@ The public Assistant API has been tested for:
 
 All planned Assistant API tests pass.
 
-## 71. Core Project Principle
+## 71. API Rate Limiting
 
-Build a real product, not a collection of tutorials.
+The API uses a custom Redis-backed fixed-window rate limiter implemented in
+`app/core/rate_limit.py`. Redis counters are incremented atomically through a
+Lua script and expire automatically after the configured window. The route
+template is used in the Redis key, so changing a path parameter such as a
+conversation ID does not create a separate bucket for the same route.
+
+### Protected endpoints and limits
+
+Unauthenticated authentication endpoints use client-IP limits:
+
+``` text
+POST /users/                  5 requests / 60 seconds
+POST /auth/login              5 requests / 60 seconds
+POST /auth/refresh           10 requests / 60 seconds
+POST /auth/logout            10 requests / 60 seconds
+POST /auth/forgot-password    3 requests / 900 seconds
+POST /auth/reset-password     5 requests / 900 seconds
+```
+
+Expensive authenticated AI endpoints enforce both an IP limit and a user-ID
+limit. Both counters must allow the request:
+
+``` text
+POST /assistant/chat                         30/IP/min + 10/user/min
+POST /rag/answer                             30/IP/min + 10/user/min
+POST /conversations/{conversation_id}/messages 30/IP/min + 10/user/min
+```
+
+These are initial application limits and may be tuned using observed usage and
+provider capacity. The IP and user limits use independent counters.
+
+### Error behavior
+
+- Exceeded limits return HTTP `429` with `RATE_LIMIT_EXCEEDED` and a
+  `Retry-After` header.
+- If Redis is unavailable, protected requests fail closed with HTTP `503` and
+  `RATE_LIMIT_SERVICE_UNAVAILABLE`.
+- Rate-limit errors use the application's standard error response shape:
+
+``` json
+{
+    "error": {
+        "code": "RATE_LIMIT_EXCEEDED",
+        "message": "Too many requests. Please try again later."
+    }
+}
+```
+
+### Design decisions and limitations
+
+- The fixed window is intentionally retained for simplicity and low overhead.
+  It can permit a burst across a window boundary; it is not a strict rolling
+  60-second limit.
+- Local development uses `request.client.host`. The application does not
+  trust `X-Forwarded-For` directly. When deployed behind a reverse proxy,
+  configure trusted proxy handling explicitly before relying on client-IP
+  limits.
+- The limiter is covered by automated tests for allowed and rejected
+  requests, `Retry-After`, route-template key stability, distinct user IDs,
+  shared per-user limits across IP addresses, and Redis failure handling.
+- The tests mock Redis; a separate integration check against live Redis should
+  be included in deployment verification.
+
+## 72. Core Project Principle
 
 Build a real product, not a collection of tutorials.
 
