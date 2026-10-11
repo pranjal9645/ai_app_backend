@@ -8,22 +8,23 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 from fastapi.security import OAuth2PasswordRequestForm
 from app.services.password_reset_service import PasswordResetService
+from app.core.rate_limit import rate_limit
 
 router = APIRouter(prefix="/auth" , tags=["Authentication"])
 
-@router.post("/login" , response_model=TokenResponse)
+@router.post("/login" , response_model=TokenResponse , dependencies=[Depends(rate_limit(5,60))])
 def login(form_data : OAuth2PasswordRequestForm = Depends() , db : Session = Depends(get_db)):
     service = AuthService(db)
 
     return service.login(email=form_data.username , password=form_data.password)
 
-@router.post("/refresh" , response_model=TokenResponse)
+@router.post("/refresh" , response_model=TokenResponse , dependencies=[Depends(rate_limit(10,60))])
 def refresh(request : RefreshTokenRequest , db : Session = Depends(get_db)):
     service = AuthService(db=db)
 
     return service.refresh(refresh_token=request.refresh_token)
 
-@router.post("/logout")
+@router.post("/logout" , dependencies=[Depends(rate_limit(10,60))])
 def logout(request : RefreshTokenRequest, db : Session = Depends(get_db)):
     service = AuthService(db=db)
 
@@ -33,7 +34,7 @@ def logout(request : RefreshTokenRequest, db : Session = Depends(get_db)):
         "message" : "Logged out successfully"
     }
 
-@router.post("/forgot-password" , response_model=ForgotPasswordResponse)
+@router.post("/forgot-password" , response_model=ForgotPasswordResponse , dependencies=[Depends(rate_limit(3,900))])
 def forgot_password(request : ForgotPasswordRequest , db : Session = Depends(get_db)):
 
     service = PasswordResetService(db=db)
@@ -45,7 +46,7 @@ def forgot_password(request : ForgotPasswordRequest , db : Session = Depends(get
     }
 
 
-@router.post("/reset-password" , response_model=ResetPasswordResponse)
+@router.post("/reset-password" , response_model=ResetPasswordResponse , dependencies=[Depends(rate_limit(5,900))])
 def reset_password(request : ResetPasswordRequest , db : Session = Depends(get_db)):
 
     service = PasswordResetService(db)

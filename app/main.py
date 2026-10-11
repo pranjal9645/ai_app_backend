@@ -8,7 +8,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.api.routes.notes import router as notes_router
 from app.core.exceptions import (
-    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError , ConversationNotFoundError , MessageNotFoundError , AppException , AIServiceUnavailableError
+    UserAlreadyExistsError , UserNotFoundError , NoteNotFoundError , AuthenticationError , ConversationNotFoundError , MessageNotFoundError , AppException , AIServiceUnavailableError , RateLimitExceededError , RateLimitServiceUnavailableError
 )
 from app.api.routes.auth import router as auth_router
 from app.api.routes.rag import router as rag_router
@@ -42,6 +42,7 @@ def database_health(db : Session = Depends(get_db)):
 @app.exception_handler(AppException)
 async def app_exception_handler(request : Request , exc : AppException):
     status_code = 400
+    headers = {}
 
     if isinstance(exc , (UserNotFoundError , ConversationNotFoundError , MessageNotFoundError , NoteNotFoundError)):
         status_code = 404
@@ -49,8 +50,11 @@ async def app_exception_handler(request : Request , exc : AppException):
         status_code = 409
     elif isinstance(exc , AuthenticationError):
         status_code = 401
-    elif isinstance(exc , AIServiceUnavailableError):
+    elif isinstance(exc , AIServiceUnavailableError , RateLimitServiceUnavailableError):
         status_code = 503
+    elif isinstance(exc , RateLimitExceededError):
+        status_code = 429
+        headers["Retry-After"] = str(exc.retry_after)
 
     return JSONResponse(
         status_code=status_code , 
@@ -59,5 +63,6 @@ async def app_exception_handler(request : Request , exc : AppException):
                 "code" : exc.code,
                 "message" : str(exc)
             }
-        }
+        },
+        headers=headers
     )

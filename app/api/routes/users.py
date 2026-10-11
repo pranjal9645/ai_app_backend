@@ -6,11 +6,12 @@ from app.schemas.auth import RegisterResponse
 from app.services.user_service import UserService
 from app.models.user import User
 from app.core.security import get_current_user
+from app.core.rate_limit import rate_limit
 
 
 router = APIRouter(prefix="/users" , tags=["Users"])
 
-@router.post("/" , response_model=RegisterResponse)
+@router.post("/" , response_model=RegisterResponse , dependencies=[Depends(rate_limit(5,60))])
 def create_user(user_data : UserCreate , db : Session = Depends(get_db)):
     service = UserService(db)
 

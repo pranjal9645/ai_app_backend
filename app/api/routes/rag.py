@@ -7,7 +7,8 @@ from app.schemas.rag import (
 from app.models.user import User
 
 from app.services.rag_service import RagService
-from app.core.security import get_current_user
+from app.core.security import get_current_user 
+from app.core.rate_limit import rate_limit , rate_limit_by_user
 
 router = APIRouter(prefix="/rag" , tags=["RAG"])
 
@@ -30,7 +31,7 @@ def build_rag_prompt(request : RAGContextRequest , db : Session = Depends(get_db
         system_prompt=prompt.system_prompt,
         user_prompt=prompt.user_prompt
     )
-@router.post("/answer" , response_model=RAGAnswerResponse)
+@router.post("/answer" , response_model=RAGAnswerResponse , dependencies=[Depends(rate_limit(30,60)) , Depends(rate_limit_by_user(10,60))])
 def generate_rag_answer(request : RAGContextRequest , db : Session = Depends(get_db) , current_user : User = Depends(get_current_user)):
     service = RagService(db)
 

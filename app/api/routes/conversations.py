@@ -13,6 +13,7 @@ from app.schemas.conversation import (
 from app.services.conversation_service import ConversationService
 from app.core.security import get_current_user
 from app.schemas.rag import RAGSource
+from app.core.rate_limit import rate_limit , rate_limit_by_user
 
 router = APIRouter(prefix="/conversations" , tags=["Conversations"])
 
@@ -44,7 +45,7 @@ def get_messages(conversation_id : int , current_user : User = Depends(get_curre
 
     return messages
 
-@router.post("/{conversation_id}/messages" , response_model=ConversationChatResponse)
+@router.post("/{conversation_id}/messages" , response_model=ConversationChatResponse , dependencies=[Depends(rate_limit(30,60)) , Depends(rate_limit_by_user(10,60))])
 def send_message(conversation_id : int , request : ConversationMessageRequest , current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):
     conversation_service = ConversationService(db=db)
 
