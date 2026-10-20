@@ -29,7 +29,7 @@ class NoteRepository:
          return (
               self.db.query(Note)
                   .filter(Note.user_id == user_id)
-                  .order_by(Note.id)
+                  .order_by(Note.id.desc())
                   .offset(skip)
                   .limit(limit)
                   .all()

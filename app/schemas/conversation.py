@@ -102,3 +102,13 @@ class ConversationChatResponse(BaseModel):
     conversation_id: int
     answer: str
     sources: list[RAGSource]
+
+class MessageCursor(BaseModel):
+    created_at : datetime
+    id : int
+
+
+class PaginatedConversationMessagesResponse(BaseModel):
+    items : list[ConversationMessageResponse]
+    next_cursor : MessageCursor | None
+    has_more : bool

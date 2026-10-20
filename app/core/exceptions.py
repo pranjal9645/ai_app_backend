@@ -28,10 +28,18 @@ class RateLimitExceededError(AppException):
 
      def __init__(self, retry_after : int):
           self.retry_after = max(retry_after , 1)
-          super().__init__(  "Too many requests. Please try again later.")
+          super().__init__("Too many requests. Please try again later.")
           
 class RateLimitServiceUnavailableError(AppException):
      code = "RATE_LIMIT_SERVICE_UNAVAILABLE"
 
      def __init__(self):
-          super().__init__("Rate-limiting service unavailable.")
+          super().__init__(" Existing service is unavailable.")
+
+
+class InvalidNoteUpdateError(AppException):
+    code = "INVALID_NOTE_UPDATE"
+
+
+class InvalidPaginationCursorError(AppException):
+    code = "INVALID_PAGINATION_CURSOR"

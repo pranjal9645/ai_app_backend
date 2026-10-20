@@ -82,7 +82,7 @@ class NoteService:
          
         
 
-    def update_note(self , note_id : int , title : str , content : str , user_id : int):
+    def update_note(self , note_id : int , user_id : int , title : str | None = None , content : str | None = None ):
 
         note = self.note_repository.get_by_id(note_id)
         if not note:
@@ -91,11 +91,14 @@ class NoteService:
         if note.user_id != user_id:
             raise NoteNotFoundError("Note not found")
 
-        content_changed = note.content != content
+        content_changed = content is not None and note.content != content
 
         try:
-          note.title = title
-          note.content = content
+          if title is not None:
+              note.title = title
+              
+          if content is not None:   
+           note.content = content
 
           note = self.note_repository.update(note)
        

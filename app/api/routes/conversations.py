@@ -1,4 +1,4 @@
-from fastapi import APIRouter , Depends , status
+from fastapi import APIRouter , Depends , status , Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
@@ -8,8 +8,9 @@ from app.schemas.conversation import (
     ConversationMessageRequest,
     ConversationMessageResponse,
     ConversationResponse,
+    PaginatedConversationMessagesResponse
 )
-
+from datetime import datetime
 from app.services.conversation_service import ConversationService
 from app.core.security import get_current_user
 from app.schemas.rag import RAGSource
@@ -37,13 +38,15 @@ def get_conversation(conversation_id : int , current_user : User = Depends(get_c
 
     return conversation_service.get_conversation(conversation_id=conversation_id , user_id=current_user.id)
 
-@router.get("/{conversation_id}/messages" , response_model=list[ConversationMessageResponse])
-def get_messages(conversation_id : int , current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):
+@router.get("/{conversation_id}/messages" , response_model=PaginatedConversationMessagesResponse)
+def get_messages(conversation_id : int  , limit : int = Query(default=10 , ge=1 , le=100) , before_created_at : datetime|None = Query(default=None) , before_id : int | None = Query(default=None , ge=1) , after_created_at : datetime | None = Query(default=None) , after_id : int | None = Query(default=None , ge=1),current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):
+
     conversation_service = ConversationService(db=db)
 
-    messages = conversation_service.get_messages(user_id=current_user.id , conversation_id=conversation_id)
+    return conversation_service.get_messages(
+        user_id=current_user.id , conversation_id=conversation_id , limit=limit , before_created_at=before_created_at , before_id=before_id , after_created_at=after_created_at,after_id=after_id
+    )
 
-    return messages
 
 @router.post("/{conversation_id}/messages" , response_model=ConversationChatResponse , dependencies=[Depends(rate_limit(30,60)) , Depends(rate_limit_by_user(10,60))])
 def send_message(conversation_id : int , request : ConversationMessageRequest , current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):

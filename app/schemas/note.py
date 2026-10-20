@@ -16,13 +16,29 @@ class NoteCreate(BaseModel):
         return value
 
 class NoteUpdate(BaseModel):
-    title : str = Field(min_length=1 , max_length=255)
-    content : str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1)
+
+    @field_validator("title", "content")
+    @classmethod
+    def validate_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Field Cannot be blank")
+        return value
+    
+class NotePatch(BaseModel):
+    title : str  | None = Field(default= None,min_length=1 , max_length=255)
+    content : str | None = Field(default=None , min_length=1)
 
 
     @field_validator("title" , "content")
     @classmethod
-    def validate_not_blank(cls , value : str) -> str:
+    def validate_not_blank(cls , value : str | None) -> str | None:
+
+            if value is None:
+                return value
+            
             value = value.strip()
     
             if not value:

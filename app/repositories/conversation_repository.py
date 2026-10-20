@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.conversation import Conversation
 from app.models.conversation_message import ConversationMessage
-from sqlalchemy import select , delete
+from sqlalchemy import select , delete , and_ , or_
 from datetime import datetime , timezone
 
 class ConversationRepository:
@@ -22,7 +22,7 @@ class ConversationRepository:
         return self.db.execute(statement).scalar_one_or_none()
 
 
-    def get_messages(self , conversation_id : int ) -> list[ConversationMessage]:
+    def get_messages(self , conversation_id : int) -> list[ConversationMessage]:
         statement = (
             select(ConversationMessage)
             .where(
@@ -32,6 +32,77 @@ class ConversationRepository:
         )
 
         return list(self.db.execute(statement).scalars().all())
+
+    def get_messages(self , conversation_id : int , limit : int = 10 , before_created_at : datetime | None = None , before_id : int | None = None , after_created_at : datetime | None = None , after_id : int | None = None) -> tuple[list[ConversationMessage] , bool]:
+
+           
+           has_before = (
+               before_created_at is not None and before_id is not None
+           )
+
+           has_after = (
+               after_created_at is not None and after_id is not None
+           )
+
+           statement = select(ConversationMessage).where(
+               ConversationMessage.conversation_id == conversation_id
+           )
+
+           if has_before:
+
+               statement = statement.where(
+                   or_(
+                       ConversationMessage.created_at < before_created_at,
+                       and_(
+                           ConversationMessage.created_at == before_created_at,
+                           ConversationMessage.id < before_id
+                       )
+                   )
+               ).order_by(
+                   ConversationMessage.created_at.desc(),
+                   ConversationMessage.id.desc()
+               )
+
+           elif has_after:
+
+               statement = statement.where(
+                   or_(
+                       ConversationMessage.created_at > after_created_at,
+                       and_(
+                           ConversationMessage.created_at == after_created_at,
+                           ConversationMessage.id > after_id
+                       )
+                   )
+               ).order_by(
+                   ConversationMessage.created_at.asc(),
+                   ConversationMessage.id.asc()
+               )
+
+           else:
+                  # Initial load: get the most recent messages.
+                  statement = statement.order_by(
+                      ConversationMessage.created_at.desc(),
+                      ConversationMessage.id.desc()
+                  )
+
+
+           messages = list(
+                      self.db.execute(statement.limit(limit+1)).scalars().all()
+                  )
+
+           has_more = len(messages) > limit
+
+           messages = messages[:limit]
+
+           if not has_after:    
+            messages.reverse()
+
+           return messages , has_more
+               
+               
+               
+
+
 
     def add_message(self , message : ConversationMessage) -> ConversationMessage:
         self.db.add(message)

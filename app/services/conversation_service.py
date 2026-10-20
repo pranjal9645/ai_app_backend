@@ -4,16 +4,20 @@ from app.repositories.conversation_repository import ConversationRepository
 from app.schemas.conversation import (
     ConversationContext,
     ConversationTurn,
+    PaginatedConversationMessagesResponse,
+    MessageCursor,
+    ConversationMessageResponse
 )
 from app.models.conversation import Conversation
 from app.services.rag_service import RagService
 from app.schemas.rag import RAGResult
 from app.core.exceptions import (
-    ConversationNotFoundError , MessageNotFoundError
+    ConversationNotFoundError , MessageNotFoundError , InvalidPaginationCursorError
 )
 from app.core.config import settings
 from app.services.embedding_service import EmbeddingService
 from app.schemas.assistant import AssistantServiceResult
+from datetime import datetime
 
 class ConversationService:
     def __init__(self , db : Session):
@@ -70,7 +74,76 @@ class ConversationService:
 
         return self.conversation_repository.get_messages(conversation_id=conversation_id)
 
+    def get_messages(self , user_id : int , conversation_id : int , limit : int = 10 , before_created_at: datetime | None = None , before_id: int | None = None , after_created_at : datetime | None = None , after_id : int | None = None) -> PaginatedConversationMessagesResponse:
+              # Both cursor values must be supplied together.
+                if (before_created_at is None) != (before_id is None):
+                    raise InvalidPaginationCursorError(
+                            "Both before_created_at and before_id must be provided together."
+                         )
 
+                if (after_created_at is None) != (after_id is None):
+                    raise InvalidPaginationCursorError(
+                        "Both after_created_at and after_id must be provided together."
+                        )
+
+                 # Only one pagination direction can be used per request.
+
+                if before_id is not None and after_id is not None:
+                    raise InvalidPaginationCursorError(
+                        "Use either a before cursor or an after cursor, not both."
+                        )
+
+                   # Verify that the conversation belongs to the user.
+
+                conversation = self.conversation_repository.get_conversation_by_id(conversation_id=conversation_id , user_id=user_id)
+
+                if conversation is None:
+                    raise  ConversationNotFoundError("Conversation not found")
+
+                  # Fetch messages using the appropriate cursor.
+
+                messages , has_more = self.conversation_repository.get_messages(conversation_id=conversation_id,
+                                                                                limit=limit,
+                                                                                before_created_at=before_created_at,
+                                                                                before_id=before_id,
+                                                                                after_created_at=after_created_at,
+                                                                                after_id=after_id
+                                                                            )
+
+                # Build the cursor from the correct edge of the returned page.
+
+                next_cursor = None
+
+                if messages:
+                    if after_id is not None:
+                          # For newer messages, continue from the newest returned message.
+                        cursor_message = messages[-1]
+                    else:
+                          # For initial loading and older history, continue from the oldest.
+
+                          cursor_message = messages[0]
+
+                    next_cursor = MessageCursor(
+                        created_at=cursor_message.created_at,
+                        id=cursor_message.id
+                    )
+
+                items = [
+                    ConversationMessageResponse(
+                        id=message.id,
+                        role=message.role,
+                        content=message.content,
+                        created_at=message.created_at
+                    )
+                    for message in messages
+                ]
+
+                return PaginatedConversationMessagesResponse(
+                    items=items,
+                    next_cursor=next_cursor,
+                    has_more=has_more
+                )
+    
     def delete_message(self , user_id : int , conversation_id : int , message_id : int):
         try:
             conversation = self.conversation_repository.get_conversation_by_id(conversation_id=conversation_id , user_id=user_id)

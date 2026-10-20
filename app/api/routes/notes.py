@@ -6,13 +6,15 @@ from app.schemas.note import (
     NoteResponse,
     NoteUpdate,
     NoteListResponse,
-    SemanticSearchResponse
+    SemanticSearchResponse,
+    NotePatch
 )
 
 from app.services.semantic_search_service import SemanticSearchService
 from app.models.user import User
 from app.services.note_service import NoteService
 from app.core.security import get_current_user
+from app.core.exceptions import InvalidNoteUpdateError
 
 router = APIRouter(prefix="/notes" , tags=["Notes"])
 
@@ -85,7 +87,6 @@ def get_notes(
     db: Session = Depends(get_db)
 ):
     service = NoteService(db)
-
     return service.get_notes(
         user_id=current_user.id,
         skip=skip,
@@ -107,6 +108,18 @@ def update_note(
         content=note_data.content,
         user_id=current_user.id
     )
+
+@router.patch("/{note_id}" , response_model=NoteResponse)
+def patch_note(note_id : int , note_data : NotePatch , current_user : User = Depends(get_current_user) , db : Session = Depends(get_db)):
+
+    service = NoteService(db=db)
+
+    updates = note_data.model_dump(exclude_unset=True)
+
+    if not updates:
+      raise InvalidNoteUpdateError("Atleast one Field should be provided")
+
+    return service.update_note(note_id=note_id , user_id=current_user.id , **updates)
 
 @router.delete("/{note_id}")
 def delete_note(
